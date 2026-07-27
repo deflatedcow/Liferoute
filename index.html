@@ -46,7 +46,6 @@ h2 {
 }
 
 
-
 button {
 
     width:100%;
@@ -66,7 +65,6 @@ button {
     font-weight:700;
 
 }
-
 
 
 #status {
@@ -98,7 +96,6 @@ button {
     animation:spin .35s linear infinite;
 
 }
-
 
 
 @keyframes spin {
@@ -147,6 +144,50 @@ button {
 
 
 
+.processing-popup {
+
+    display:none;
+
+    position:absolute;
+
+    z-index:2000;
+
+    top:50%;
+
+    left:50%;
+
+    transform:translate(-50%,-50%);
+
+    background:white;
+
+    padding:25px;
+
+    border-radius:20px;
+
+    width:80%;
+
+    max-width:350px;
+
+    text-align:center;
+
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+
+    font-size:18px;
+
+}
+
+
+
+.processing-popup .emoji {
+
+    font-size:40px;
+
+    margin-bottom:10px;
+
+}
+
+
+
 #map {
 
     width:100%;
@@ -165,7 +206,6 @@ button {
 
 
 <div id="top">
-
 
 <h2>🌍 Life Route</h2>
 
@@ -186,15 +226,12 @@ Choose Photo Folder
 </button>
 
 
-
 <div id="status">
 Waiting for photos...
 </div>
 
 
-
 <div id="loader" class="loader"></div>
-
 
 
 <div id="progress-container" class="progress-container">
@@ -208,18 +245,27 @@ Waiting for photos...
 
 
 
-<div id="map"></div>
+<div id="processing-popup" class="processing-popup">
 
+<div class="emoji">
+🌎
+</div>
+
+<div id="processing-text">
+Preparing your life route...
+</div>
+
+</div>
+
+
+
+<div id="map"></div>
 
 
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
-
-
-
-
 <script>
 
 
@@ -244,17 +290,20 @@ let points=[];
 const status =
 document.getElementById("status");
 
-
 const loader =
 document.getElementById("loader");
-
 
 const progressContainer =
 document.getElementById("progress-container");
 
-
 const progressBar =
 document.getElementById("progress-bar");
+
+const processingPopup =
+document.getElementById("processing-popup");
+
+const processingText =
+document.getElementById("processing-text");
 
 
 
@@ -268,9 +317,7 @@ photos.addEventListener(
 async function(e){
 
 
-
 points=[];
-
 
 
 let files =
@@ -305,12 +352,18 @@ loader.style.display="block";
 
 progressContainer.style.display="block";
 
+processingPopup.style.display="block";
+
+
 progressBar.style.width="0%";
 
 
+processingText.innerText =
+"🔍 Scanning photos...";
+
 
 status.innerText =
-`Preparing ${limit} photos...`;
+`Found ${limit} photos`;
 
 
 
@@ -323,9 +376,7 @@ let completed=0;
 async function worker(){
 
 
-
 while(queue.length){
-
 
 
 const file =
@@ -333,8 +384,7 @@ queue.shift();
 
 
 
-try {
-
+try{
 
 
 const result =
@@ -347,7 +397,6 @@ if(result){
 points.push(result);
 
 }
-
 
 
 }
@@ -367,13 +416,8 @@ completed++;
 
 
 
-if(completed % 5 === 0){
-
-
-
 const percent =
 (completed / limit) * 100;
-
 
 
 progressBar.style.width =
@@ -381,9 +425,17 @@ percent+"%";
 
 
 
+if(completed % 10 === 0){
+
+
 status.innerText =
 `Scanning ${completed}/${limit} photos`;
 
+
+processingText.innerText =
+`📍 Extracting locations and dates
+
+${completed}/${limit}`;
 
 
 await new Promise(
@@ -391,7 +443,6 @@ r=>setTimeout(r,0)
 );
 
 
-
 }
 
 
@@ -401,22 +452,17 @@ r=>setTimeout(r,0)
 
 
 }
-
 
 
 
 await Promise.all([
 
 worker(),
-
 worker(),
-
 worker(),
-
 worker()
 
 ]);
-
 
 
 
@@ -433,10 +479,12 @@ new Date(b.date)
 
 
 
+
 loader.style.display="none";
 
-progressContainer.style.display="none";
 
+processingText.innerText =
+"🗺️ Drawing your life route...";
 
 
 status.innerText =
@@ -444,7 +492,9 @@ status.innerText =
 
 
 
-console.log(points.slice(0,5));
+await new Promise(
+r=>setTimeout(r,800)
+);
 
 
 
@@ -452,9 +502,29 @@ drawRoute();
 
 
 
+processingText.innerText =
+`✨ Done!
+
+${points.length} memories mapped`;
+
+
+
+setTimeout(()=>{
+
+processingPopup.style.display="none";
+
+},2000);
+
+
+
+progressContainer.style.display="none";
+
+
+
 }
 
 );
+
 
 
 
@@ -470,6 +540,7 @@ if(cache.has(file.name)){
 return cache.get(file.name);
 
 }
+
 
 
 
@@ -490,7 +561,7 @@ return null;
 
 
 
-const result={
+const result = {
 
 
 lat:Number(gps.latitude),
@@ -529,24 +600,15 @@ function drawRoute(){
 
 
 
-map.eachLayer(layer=>{
+if(points.length===0){
 
+alert(
+"No GPS data found"
+);
 
-if(
-
-layer instanceof L.Polyline ||
-
-layer instanceof L.Marker
-
-){
-
-map.removeLayer(layer);
+return;
 
 }
-
-
-});
-
 
 
 
@@ -561,16 +623,11 @@ p.lng
 
 
 
-
-if(coords.length===0){
-
-alert(
-"No GPS data found"
+console.log(
+"Drawing route:",
+coords
 );
 
-return;
-
-}
 
 
 
@@ -579,9 +636,13 @@ const route =
 L.polyline(
 coords,
 {
-color:"blue",
-weight:5,
-opacity:.8
+
+color:"red",
+
+weight:6,
+
+opacity:0.85
+
 }
 
 )
@@ -591,7 +652,19 @@ opacity:.8
 
 
 
-L.marker(coords[0])
+L.circleMarker(
+
+coords[0],
+
+{
+
+radius:10,
+
+color:"green"
+
+}
+
+)
 
 .addTo(map)
 
@@ -603,8 +676,18 @@ L.marker(coords[0])
 
 
 
-L.marker(
-coords[coords.length-1]
+L.circleMarker(
+
+coords[coords.length-1],
+
+{
+
+radius:10,
+
+color:"red"
+
+}
+
 )
 
 .addTo(map)
@@ -622,10 +705,20 @@ map.fitBounds(
 route.getBounds(),
 
 {
-padding:[40,40]
+
+padding:[60,60]
+
 }
 
 );
+
+
+
+setTimeout(()=>{
+
+map.invalidateSize();
+
+},500);
 
 
 
