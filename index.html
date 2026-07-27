@@ -1,532 +1,1054 @@
 <!DOCTYPE html>
 <html>
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Liferoute</title>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { 
-    margin: 0; 
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    overflow: hidden;
-    background: #000;
+
+*{
+    box-sizing:border-box;
 }
 
-#panel {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    padding: 16px;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(10px);
-    border-radius: 0 0 22px 22px;
-    box-shadow: 0 4px 30px rgba(0,0,0,0.2);
+body{
+    margin:0;
+    font-family:system-ui,Arial,sans-serif;
 }
 
-h2 { margin: 0 0 12px; color: #111; }
 
-button {
-    width: 100%;
-    padding: 16px;
-    border: 0;
-    border-radius: 16px;
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #111;
-    font-size: 18px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s ease;
+#panel{
+
+    position:absolute;
+    top:0;
+    left:0;
+
+    width:100%;
+
+    padding:16px;
+
+    z-index:1000;
+
+    background:white;
+
+    border-radius:0 0 22px 22px;
+
+    box-shadow:0 4px 20px rgba(0,0,0,.15);
+
 }
 
-button:hover { transform: translateY(-2px); }
-button.active { background: #111; color: #FFD700; transform: scale(0.96); }
 
-#status { margin-top: 12px; font-size: 14px; color: #666; }
 
-#loader {
-    display: none;
-    width: 35px;
-    height: 35px;
-    margin: 15px auto;
-    border-radius: 50%;
-    border: 5px solid #eee;
-    border-top: 5px solid #111;
-    animation: spin 0.5s linear infinite;
+h2{
+    margin:0 0 12px;
 }
 
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-#progressOuter {
-    display: none;
-    height: 10px;
-    background: #eee;
-    border-radius: 10px;
-    overflow: hidden;
-    margin-top: 10px;
+
+button{
+
+    width:100%;
+
+    padding:16px;
+
+    border:0;
+
+    border-radius:16px;
+
+    background:#FFD700;
+
+    color:#111;
+
+    font-size:18px;
+
+    font-weight:700;
+
+    transition:.3s;
+
 }
 
-#progress { width: 0%; height: 100%; background: #FFD700; transition: width 0.2s; }
 
-#popup {
-    display: none;
-    position: absolute;
-    z-index: 2000;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(10px);
-    padding: 25px;
-    width: 80%;
-    max-width: 400px;
-    border-radius: 20px;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+
+button.active{
+
+    background:#111;
+
+    color:#FFD700;
+
+    transform:scale(.96);
+
 }
 
-#map { height: 100vh; width: 100%; }
 
-#infoPanel {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    padding: 12px 16px;
-    border-radius: 12px;
-    font-size: 13px;
-    color: #666;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    display: none;
+
+#status{
+
+    margin-top:12px;
+
+    font-size:14px;
+
 }
+
+
+
+#loader{
+
+    display:none;
+
+    width:35px;
+
+    height:35px;
+
+    margin:15px auto;
+
+    border-radius:50%;
+
+    border:5px solid #ddd;
+
+    border-top:5px solid #111;
+
+    animation:spin .5s linear infinite;
+
+}
+
+
+
+@keyframes spin{
+
+    from{
+        transform:rotate(0deg);
+    }
+
+    to{
+        transform:rotate(360deg);
+    }
+
+}
+
+
+
+#progressOuter{
+
+    display:none;
+
+    height:10px;
+
+    background:#ddd;
+
+    border-radius:10px;
+
+    overflow:hidden;
+
+    margin-top:10px;
+
+}
+
+
+
+#progress{
+
+    width:0%;
+
+    height:100%;
+
+    background:#111;
+
+    transition:.2s;
+
+}
+
+
+
+#popup{
+
+    display:none;
+
+    position:absolute;
+
+    z-index:2000;
+
+    top:50%;
+
+    left:50%;
+
+    transform:translate(-50%,-50%);
+
+    background:white;
+
+    padding:25px;
+
+    width:80%;
+
+    border-radius:20px;
+
+    text-align:center;
+
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+
+}
+
+
+
+#map{
+
+    height:100vh;
+
+    width:100%;
+
+}
+
+
 </style>
+
 </head>
 
+
 <body>
+
+
 <div id="panel">
-    <h2>Liferoute</h2>
-    <input id="folder" type="file" accept="image/*" webkitdirectory directory multiple hidden>
-    <button id="button">Choose Photo Folder</button>
-    <div id="status">Waiting for photos</div>
-    <div id="loader"></div>
-    <div id="progressOuter"><div id="progress"></div></div>
+
+
+<h2>Liferoute</h2>
+
+
+<input
+
+id="folder"
+
+type="file"
+
+accept="image/*"
+
+webkitdirectory
+
+directory
+
+multiple
+
+hidden
+
+>
+
+
+<button id="button">
+
+Choose Photo Folder
+
+</button>
+
+
+
+<div id="status">
+
+Waiting for photos
+
 </div>
+
+
+
+<div id="loader"></div>
+
+
+
+<div id="progressOuter">
+
+<div id="progress"></div>
+
+</div>
+
+
+</div>
+
+
 
 <div id="popup">
-    <div id="popupText">Preparing</div>
+
+<div id="popupText">
+
+Preparing
+
 </div>
 
-<div id="infoPanel"></div>
+</div>
+
+
+
 <div id="map"></div>
 
+
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
 <script>
-// ============================================
-// STATE
-// ============================================
-let map, markerCluster, markers = [], lines = [], photos = [], routeSegments = [];
 
-// ============================================
-// DOM
-// ============================================
-const folderInput = document.getElementById('folder');
-const button = document.getElementById('button');
-const statusEl = document.getElementById('status');
-const loader = document.getElementById('loader');
-const progress = document.getElementById('progress');
-const progressOuter = document.getElementById('progressOuter');
-const popup = document.getElementById('popup');
-const popupText = document.getElementById('popupText');
-const infoPanel = document.getElementById('infoPanel');
 
-// ============================================
-// INIT
-// ============================================
-document.addEventListener('DOMContentLoaded', () => {
-    map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-        maxZoom: 19
-    }).addTo(map);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+const map =
+L.map("map")
+.setView([20,0],2);
 
-    button.onclick = () => folderInput.click();
-    folderInput.addEventListener('change', handleFiles);
-});
 
-// ============================================
-// FILE HANDLING
-// ============================================
-async function handleFiles(e) {
-    resetMap();
-    
-    const files = [...e.target.files]
-        .filter(f => f.type.startsWith('image/'))
-        .slice(0, 1500);
 
-    if (files.length === 0) return;
+L.tileLayer(
+"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+{
+attribution:"© OpenStreetMap"
+}
+)
+.addTo(map);
 
-    updateUI('loading', `Processing ${files.length} files...`);
-    
-    photos = await processFiles(files);
 
-    if (photos.length === 0) {
-        updateUI('error', 'No GPS data found. Ensure location was enabled when photos were taken.');
-        return;
-    }
 
-    updateUI('processing', 'Building route...');
-    
-    photos.sort((a, b) => a.date - b.date);
-    routeSegments = buildTrips(photos);
-    
-    drawRoutes();
-    drawMarkers();
-    
-    setTimeout(() => {
-        const bounds = L.latLngBounds(photos.map(p => [p.lat, p.lng]));
-        map.fitBounds(bounds, { padding: [60, 60] });
-    }, 500);
+const folder =
+document.getElementById("folder");
 
-    updateUI('complete', `${photos.length} locations found`);
-    updateInfoPanel();
+
+const button =
+document.getElementById("button");
+
+
+const status =
+document.getElementById("status");
+
+
+const loader =
+document.getElementById("loader");
+
+
+const progress =
+document.getElementById("progress");
+
+
+const progressOuter =
+document.getElementById("progressOuter");
+
+
+const popup =
+document.getElementById("popup");
+
+
+const popupText =
+document.getElementById("popupText");
+
+
+
+let photos = [];
+
+let routeSegments = [];
+
+let lines = [];
+
+
+
+button.onclick = ()=>{
+
+    folder.click();
+
+};
+
+
+
+
+
+
+
+folder.addEventListener(
+"change",
+async(e)=>{
+
+
+resetMap();
+
+
+
+let files =
+[...e.target.files]
+.filter(
+f=>f.type.startsWith("image/")
+)
+.slice(0,1500);
+
+
+
+if(files.length===0){
+
+return;
+
 }
 
-// ============================================
-// PROCESS FILES WITH MULTIPLE STRATEGIES
-// ============================================
-async function processFiles(files) {
-    const results = [];
-    let done = 0;
 
-    // Process in parallel with error handling
-    const promises = files.map(async (file) => {
-        const data = await extractGPSFromFile(file);
-        done++;
-        updateProgress(done, files.length);
-        if (data) results.push(data);
-    });
 
-    await Promise.all(promises);
-    return results;
+button.classList.add("active");
+
+button.innerText =
+"Scanning";
+
+
+
+loader.style.display="block";
+
+progressOuter.style.display="block";
+
+popup.style.display="block";
+
+
+
+setPopup(
+"Reading photos"
+);
+
+
+
+status.innerText =
+`0 / ${files.length}`;
+
+
+
+photos =
+await extractPhotos(files);
+
+
+
+if(photos.length===0){
+
+
+setPopup(
+"No GPS photos found"
+);
+
+
+status.innerText =
+"No locations found";
+
+
+finishButton();
+
+return;
+
+
 }
 
-// ============================================
-// GPS EXTRACTION - MULTIPLE STRATEGIES
-// ============================================
-async function extractGPSFromFile(file) {
-    try {
-        // Strategy 1: Use exifr.gps() if available (full version)
-        if (typeof exifr.gps === 'function') {
-            try {
-                const gps = await exifr.gps(file);
-                if (gps && gps.latitude !== undefined && gps.longitude !== undefined) {
-                    const date = await extractDateFromFile(file);
-                    return { lat: gps.latitude, lng: gps.longitude, date, fileName: file.name };
-                }
-            } catch (e) {}
-        }
 
-        // Strategy 2: Parse all EXIF and look for GPS tags
-        const exif = await exifr.parse(file);
-        if (!exif) return null;
 
-        // Check for direct coordinates
-        if (exif.latitude && exif.longitude) {
-            const date = extractDateFromEXIF(exif) || new Date(file.lastModified);
-            return { lat: parseFloat(exif.latitude), lng: parseFloat(exif.longitude), date, fileName: file.name };
-        }
+setPopup(
+"Building route"
+);
 
-        // Check for GPSLatitude/GPSLongitude
-        if (exif.GPSLatitude && exif.GPSLongitude) {
-            const lat = convertDMS(exif.GPSLatitude, exif.GPSLatitudeRef);
-            const lng = convertDMS(exif.GPSLongitude, exif.GPSLongitudeRef);
-            if (lat !== null && lng !== null) {
-                const date = extractDateFromEXIF(exif) || new Date(file.lastModified);
-                return { lat, lng, date, fileName: file.name };
-            }
-        }
 
-        // Strategy 3: Check nested GPSInfo
-        if (exif.GPSInfo && exif.GPSInfo.GPSLatitude && exif.GPSInfo.GPSLongitude) {
-            const lat = convertDMS(exif.GPSInfo.GPSLatitude, exif.GPSInfo.GPSLatitudeRef);
-            const lng = convertDMS(exif.GPSInfo.GPSLongitude, exif.GPSInfo.GPSLongitudeRef);
-            if (lat !== null && lng !== null) {
-                const date = extractDateFromEXIF(exif) || new Date(file.lastModified);
-                return { lat, lng, date, fileName: file.name };
-            }
-        }
 
-        // Strategy 4: Check XMP data
-        if (exif.xmp) {
-            const gps = parseXMPGPS(exif.xmp);
-            if (gps) {
-                const date = extractDateFromEXIF(exif) || new Date(file.lastModified);
-                return { lat: gps.lat, lng: gps.lng, date, fileName: file.name };
-            }
-        }
+status.innerText =
+"Sorting locations";
 
-        // Strategy 5: Try reading file as ArrayBuffer and parsing manually
-        const arrayBuffer = await file.slice(0, 1024 * 1024).arrayBuffer(); // First 1MB
-        const exifFromBuffer = await exifr.parse(arrayBuffer);
-        if (exifFromBuffer && exifFromBuffer.GPSLatitude) {
-            const lat = convertDMS(exifFromBuffer.GPSLatitude, exifFromBuffer.GPSLatitudeRef);
-            const lng = convertDMS(exifFromBuffer.GPSLongitude, exifFromBuffer.GPSLongitudeRef);
-            if (lat !== null && lng !== null) {
-                const date = extractDateFromEXIF(exifFromBuffer) || new Date(file.lastModified);
-                return { lat, lng, date, fileName: file.name };
-            }
-        }
 
-        return null;
-    } catch (e) {
-        console.error('Error processing', file.name, e);
-        return null;
-    }
+
+photos.sort(
+(a,b)=>
+a.date-b.date
+);
+
+
+
+routeSegments =
+buildTrips(photos);
+
+
+
+drawRoutes();
+
+
+
+setPopup(
+"Complete"
+);
+
+
+
+status.innerText =
+`${photos.length} locations found`;
+
+
+
+setTimeout(()=>{
+
+popup.style.display="none";
+
+},1200);
+
+
+
+finishButton();
+
+
+
 }
 
-// ============================================
-// DATE EXTRACTION
-// ============================================
-async function extractDateFromFile(file) {
-    try {
-        const exif = await exifr.parse(file, { pick: ['DateTimeOriginal', 'DateTime', 'CreateDate'] });
-        return extractDateFromEXIF(exif);
-    } catch (e) {
-        return new Date(file.lastModified);
-    }
+);
+
+
+
+
+
+
+
+
+
+
+async function extractPhotos(files){
+
+
+let results=[];
+
+let queue=[...files];
+
+
+let done=0;
+
+
+
+async function worker(){
+
+
+while(queue.length){
+
+
+let file =
+queue.shift();
+
+
+let data =
+await readPhoto(file);
+
+
+
+if(data){
+
+results.push(data);
+
 }
 
-function extractDateFromEXIF(exif) {
-    const fields = ['DateTimeOriginal', 'DateTime', 'CreateDate'];
-    for (const field of fields) {
-        if (exif[field]) {
-            try {
-                return new Date(exif[field]);
-            } catch (e) {
-                // Try manual parsing
-                const str = String(exif[field]);
-                if (str.match(/\d{4}:\d{2}:\d{2}/)) {
-                    const [datePart, timePart] = str.split(' ');
-                    const [year, month, day] = datePart.split(':');
-                    const [hour, minute, second] = timePart ? timePart.split(':') : [0, 0, 0];
-                    return new Date(year, month - 1, day, hour, minute, second);
-                }
-            }
-        }
-    }
-    return null;
+
+
+done++;
+
+
+
+progress.style.width =
+(done/files.length*100)+"%";
+
+
+
+status.innerText =
+`Extracting ${done}/${files.length}`;
+
+
+
+if(done%5===0){
+
+await pause();
+
 }
 
-// ============================================
-// COORDINATE CONVERSION
-// ============================================
-function convertDMS(dms, hemisphere) {
-    if (!dms || dms.length < 3) return null;
-    
-    try {
-        const deg = typeof dms[0] === 'object' ? dms[0].num / dms[0].den : parseFloat(dms[0]);
-        const min = typeof dms[1] === 'object' ? dms[1].num / dms[1].den : parseFloat(dms[1]);
-        const sec = typeof dms[2] === 'object' ? dms[2].num / dms[2].den : parseFloat(dms[2]);
-        
-        if (isNaN(deg) || isNaN(min) || isNaN(sec)) return null;
-        
-        let dd = deg + (min / 60) + (sec / 3600);
-        if (hemisphere === 'S' || hemisphere === 'W') dd = -dd;
-        
-        if (dd < -180 || dd > 180) return null;
-        return dd;
-    } catch (e) {
-        return null;
-    }
+
 }
 
-// ============================================
-// XMP GPS PARSING
-// ============================================
-function parseXMPGPS(xmp) {
-    if (!xmp) return null;
-    
-    // XMP might have GPS in various formats
-    if (xmp.GPSLatitude && xmp.GPSLongitude) {
-        return {
-            lat: parseFloat(xmp.GPSLatitude),
-            lng: parseFloat(xmp.GPSLongitude)
-        };
-    }
-    
-    // Check for string format
-    if (xmp.GPS && typeof xmp.GPS === 'string') {
-        const match = xmp.GPS.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-        if (match) {
-            return {
-                lat: parseFloat(match[1]),
-                lng: parseFloat(match[2])
-            };
-        }
-    }
-    
-    return null;
+
 }
 
-// ============================================
-// TRIP BUILDING
-// ============================================
-function buildTrips(points) {
-    const trips = [];
-    let current = [];
 
-    for (let i = 0; i < points.length; i++) {
-        const point = points[i];
-        if (current.length === 0) {
-            current.push(point);
-            continue;
-        }
 
-        const previous = current[current.length - 1];
-        const km = haversine(previous, point);
-        const hours = (point.date - previous.date) / 3600000;
 
-        if (km > 100 || hours > 12) {
-            trips.push(current);
-            current = [];
-        }
-        current.push(point);
-    }
+await Promise.all([
 
-    if (current.length > 0) trips.push(current);
-    return trips;
+worker(),
+
+worker(),
+
+worker(),
+
+worker()
+
+]);
+
+
+
+return results;
+
+
 }
 
-function haversine(a, b) {
-    const R = 6371;
-    const dLat = (b.lat - a.lat) * Math.PI / 180;
-    const dLng = (b.lng - a.lng) * Math.PI / 180;
-    const lat1 = a.lat * Math.PI / 180;
-    const lat2 = b.lat * Math.PI / 180;
-    const x = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+
+
+
+
+
+
+
+
+async function readPhoto(file){
+
+
+
+try{
+
+
+let gps =
+await exifr.gps(file);
+
+
+
+if(
+!gps ||
+gps.latitude===undefined
+){
+
+return null;
+
 }
 
-// ============================================
-// RENDERING
-// ============================================
-function drawRoutes() {
-    lines.forEach(line => map.removeLayer(line));
-    lines = [];
 
-    routeSegments.forEach(segment => {
-        if (segment.length < 2) return;
-        const coords = segment.map(p => [p.lat, p.lng]);
-        const line = L.polyline([], {
-            color: '#FFD700',
-            weight: 4,
-            opacity: 0.8,
-            lineCap: 'round',
-            lineJoin: 'round'
-        }).addTo(map);
-        lines.push(line);
-        animateLine(line, coords);
-    });
+
+let meta =
+await exifr.parse(
+file,
+[
+"DateTimeOriginal"
+]
+);
+
+
+
+let date =
+meta &&
+meta.DateTimeOriginal
+
+?
+
+new Date(meta.DateTimeOriginal)
+
+:
+
+new Date(file.lastModified);
+
+
+
+return {
+
+lat:Number(gps.latitude),
+
+lng:Number(gps.longitude),
+
+date:date
+
+};
+
+
+
 }
 
-function animateLine(line, coords) {
-    let index = 0;
-    const current = [];
-    function step() {
-        if (index >= coords.length) return;
-        current.push(coords[index]);
-        line.setLatLngs(current);
-        index++;
-        setTimeout(step, 40);
-    }
-    step();
+catch(e){
+
+return null;
+
 }
 
-function drawMarkers() {
-    markers.forEach(m => map.removeLayer(m));
-    markers = [];
 
-    photos.forEach(photo => {
-        const marker = L.circleMarker([photo.lat, photo.lng], {
-            radius: 4,
-            fillColor: '#FFD700',
-            color: '#FFA500',
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8
-        });
-        markers.push(marker);
-        marker.addTo(map);
-    });
 }
 
-// ============================================
-// UI
-// ============================================
-function updateUI(state, message) {
-    switch (state) {
-        case 'loading':
-            button.classList.add('active');
-            button.innerText = 'Scanning...';
-            loader.style.display = 'block';
-            progressOuter.style.display = 'block';
-            popup.style.display = 'block';
-            popupText.textContent = message;
-            statusEl.textContent = message;
-            break;
-        case 'processing':
-            popupText.textContent = message;
-            statusEl.textContent = message;
-            break;
-        case 'complete':
-            popupText.textContent = message;
-            statusEl.textContent = message;
-            setTimeout(() => popup.style.display = 'none', 1500);
-            finishButton();
-            break;
-        case 'error':
-            popupText.textContent = message;
-            statusEl.textContent = message;
-            finishButton();
-            break;
-    }
+
+
+
+
+
+
+
+
+function buildTrips(points){
+
+
+let trips=[];
+
+let current=[];
+
+
+
+for(let i=0;i<points.length;i++){
+
+
+
+let point =
+points[i];
+
+
+
+if(current.length===0){
+
+
+current.push(point);
+
+continue;
+
+
 }
 
-function updateProgress(done, total) {
-    const percent = Math.round((done / total) * 100);
-    progress.style.width = `${percent}%`;
-    statusEl.textContent = `Processing ${done}/${total} (${percent}%)`;
+
+
+let previous =
+current[current.length-1];
+
+
+
+let km =
+distance(
+previous,
+point
+);
+
+
+
+let hours =
+(point.date-previous.date)
+/3600000;
+
+
+
+if(
+km>100 ||
+hours>12
+){
+
+
+
+trips.push(current);
+
+current=[];
+
+
+
 }
 
-function updateInfoPanel() {
-    infoPanel.textContent = `${photos.length} locations | ${routeSegments.length} trips`;
-    infoPanel.style.display = 'block';
+
+
+current.push(point);
+
+
+
 }
 
-function finishButton() {
-    button.classList.remove('active');
-    button.innerText = 'Choose Photo Folder';
-    loader.style.display = 'none';
-    progressOuter.style.display = 'none';
-    progress.style.width = '0%';
+
+
+if(current.length){
+
+trips.push(current);
+
 }
 
-function resetMap() {
-    lines.forEach(line => map.removeLayer(line));
-    markers.forEach(m => map.removeLayer(m));
-    lines = [];
-    markers = [];
-    photos = [];
-    routeSegments = [];
-    infoPanel.style.display = 'none';
+
+
+return trips;
+
+
 }
+
+
+
+
+
+
+
+function distance(a,b){
+
+
+let R=6371;
+
+
+let dLat =
+(b.lat-a.lat)
+*
+Math.PI/180;
+
+
+let dLng =
+(b.lng-a.lng)
+*
+Math.PI/180;
+
+
+
+let x =
+Math.sin(dLat/2)**2+
+
+Math.cos(
+a.lat*Math.PI/180
+)
+*
+Math.cos(
+b.lat*Math.PI/180
+)
+*
+Math.sin(dLng/2)**2;
+
+
+
+return R *
+2 *
+Math.atan2(
+Math.sqrt(x),
+Math.sqrt(1-x)
+);
+
+
+}
+function drawRoutes(){
+
+
+lines.forEach(
+line=>map.removeLayer(line)
+);
+
+
+lines=[];
+
+
+
+let allPoints=[];
+
+
+
+routeSegments.forEach(
+segment=>{
+
+
+segment.forEach(
+p=>allPoints.push(p)
+);
+
+
+
+let coords =
+segment.map(
+p=>[
+p.lat,
+p.lng
+]
+);
+
+
+
+if(coords.length>1){
+
+
+
+let line =
+L.polyline(
+[],
+{
+color:"#111",
+weight:5,
+opacity:.85
+}
+)
+.addTo(map);
+
+
+
+lines.push(line);
+
+
+
+animateLine(
+line,
+coords
+);
+
+
+
+}
+
+
+
+}
+
+);
+
+
+
+setTimeout(()=>{
+
+
+let group =
+L.featureGroup(lines);
+
+
+
+if(group.getBounds().isValid()){
+
+map.fitBounds(
+group.getBounds(),
+{
+padding:[40,40]
+}
+);
+
+}
+
+
+
+},1000);
+
+
+
+}
+
+
+
+
+
+
+
+
+
+function animateLine(line,coords){
+
+
+let index=0;
+
+let current=[];
+
+
+
+function step(){
+
+
+if(index>=coords.length){
+
+return;
+
+}
+
+
+
+current.push(
+coords[index]
+);
+
+
+
+line.setLatLngs(
+current
+);
+
+
+
+index++;
+
+
+
+setTimeout(
+step,
+40
+);
+
+
+
+}
+
+
+
+step();
+
+
+
+}
+
+
+
+
+
+
+
+
+
+function resetMap(){
+
+
+
+lines.forEach(
+line=>map.removeLayer(line)
+);
+
+
+
+lines=[];
+
+photos=[];
+
+routeSegments=[];
+
+
+
+}
+
+
+
+function setPopup(text){
+
+
+popupText.innerText=text;
+
+popup.style.display="block";
+
+
+}
+
+
+
+function finishButton(){
+
+
+
+button.classList.remove(
+"active"
+);
+
+
+button.innerText =
+"Choose Photo Folder";
+
+
+loader.style.display="none";
+
+
+progressOuter.style.display="none";
+
+
+
+}
+
+
+
+function pause(){
+
+
+return new Promise(
+resolve=>
+setTimeout(resolve,0)
+);
+
+
+}
+
+
+
+
 </script>
+
+
 </body>
+
 </html>
