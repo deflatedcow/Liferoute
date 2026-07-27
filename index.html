@@ -500,6 +500,7 @@ finishButton();
 
 
 
+
 async function extractPhotos(files){
 
 
@@ -591,14 +592,15 @@ return results;
 
 
 
+
 // Helper function to convert DMS (degrees, minutes, seconds) to decimal degrees
 function convertDMSToDD(dms, hemisphere) {
     if (!dms || dms.length < 3) return null;
     
-    // Convert rational numbers to floats
-    const deg = dms[0].num / dms[0].den;
-    const min = dms[1].num / dms[1].den;
-    const sec = dms[2].num / dms[2].den;
+    // Handle both array format and rational format
+    const deg = typeof dms[0] === 'number' ? dms[0] : dms[0].num / dms[0].den;
+    const min = typeof dms[1] === 'number' ? dms[1] : dms[1].num / dms[1].den;
+    const sec = typeof dms[2] === 'number' ? dms[2] : dms[2].num / dms[2].den;
     
     let dd = deg + (min / 60) + (sec / 3600);
     
@@ -619,31 +621,50 @@ async function readPhoto(file){
 
 try{
 
-// Use exifr.parse to get all GPS tags
-let exif = await exifr.parse(file, {
-    pick: ['GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef', 'DateTimeOriginal']
-});
+// Parse all EXIF data (not just GPS) to see what's available
+let exif = await exifr.parse(file);
 
 
-if(!exif || !exif.GPSLatitude || !exif.GPSLongitude){
+// Check for GPS data in various formats
+let lat, lng, date;
+
+// Method 1: Check for already-converted decimal coordinates
+if (exif.latitude && exif.longitude) {
+    lat = exif.latitude;
+    lng = exif.longitude;
+} 
+// Method 2: Check for GPSLatitude/GPSLongitude arrays (DMS format)
+else if (exif.GPSLatitude && exif.GPSLongitude) {
+    lat = convertDMSToDD(exif.GPSLatitude, exif.GPSLatitudeRef);
+    lng = convertDMSToDD(exif.GPSLongitude, exif.GPSLongitudeRef);
+}
+// Method 3: Check for nested GPS info
+else if (exif.GPSInfo && exif.GPSInfo.GPSLatitude && exif.GPSInfo.GPSLongitude) {
+    lat = convertDMSToDD(exif.GPSInfo.GPSLatitude, exif.GPSInfo.GPSLatitudeRef);
+    lng = convertDMSToDD(exif.GPSInfo.GPSLongitude, exif.GPSInfo.GPSLongitudeRef);
+}
+else {
+    // No GPS data found
     return null;
 }
 
 
-// Convert DMS to decimal degrees
-let lat = convertDMSToDD(exif.GPSLatitude, exif.GPSLatitudeRef);
-let lng = convertDMSToDD(exif.GPSLongitude, exif.GPSLongitudeRef);
-
-
+// Validate coordinates
 if(lat === null || lng === null || isNaN(lat) || isNaN(lng)){
     return null;
 }
 
 
-// Get date from DateTimeOriginal or fall back to file modification date
-let date = exif.DateTimeOriginal 
-    ? new Date(exif.DateTimeOriginal)
-    : new Date(file.lastModified);
+// Get date from various possible fields
+if (exif.DateTimeOriginal) {
+    date = new Date(exif.DateTimeOriginal);
+} else if (exif.DateTime) {
+    date = new Date(exif.DateTime);
+} else if (exif.CreateDate) {
+    date = new Date(exif.CreateDate);
+} else {
+    date = new Date(file.lastModified);
+}
 
 
 return {
@@ -664,7 +685,6 @@ return null;
 
 
 }
-
 
 
 
@@ -909,7 +929,6 @@ padding:[40,40]
 
 
 }
-
 
 
 
