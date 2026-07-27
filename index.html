@@ -341,6 +341,7 @@ document.getElementById("popupText");
 let photos = [];
 
 let routeSegments = [];
+let markers = [];
 
 let lines = [];
 
@@ -460,6 +461,7 @@ buildTrips(photos);
 
 
 drawRoutes();
+        drawMarkers();
 
 
 
@@ -900,6 +902,9 @@ padding:[40,40]
 
 
 },1000);
+
+\nlet markers = [];
+\nfunction drawMarkers(){\n\n  markers.forEach(m=>map.removeLayer(m));\n  markers=[];\n\n  photos.forEach(p=>{\n\n    let marker=L.circleMarker([p.lat,p.lng],{\n\n      radius:6,\n\n      fillColor:"#FFD700",\n\n      color:"#000",\n\n      weight:1,\n\n      opacity:1,\n\n      fillOpacity:0.8\n\n    });\n\n    markers.push(marker);\n    marker.addTo(map);\n\n  });\n\n}
 
 
 
