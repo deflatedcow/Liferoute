@@ -2,53 +2,83 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Life Route</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
 <style>
+* {
+    box-sizing:border-box;
+}
+
 body {
     margin:0;
-    font-family:Arial, sans-serif;
+    font-family:system-ui, sans-serif;
+    background:#000;
 }
 
-header {
+#top {
+    position:absolute;
+    z-index:1000;
+    top:0;
+    width:100%;
+    padding:15px;
+    background:white;
+    border-radius:0 0 20px 20px;
+}
+
+h2 {
+    margin:0 0 10px;
+}
+
+button {
+    width:100%;
+    padding:15px;
+    border:0;
+    border-radius:12px;
     background:#111;
     color:white;
-    padding:20px;
+    font-size:18px;
 }
 
-h1 {
-    margin:0 0 10px 0;
+#status {
+    margin-top:10px;
+    font-size:14px;
 }
 
 #map {
-    height:calc(100vh - 120px);
-}
-
-input {
-    margin-top:10px;
+    height:100vh;
+    width:100%;
 }
 </style>
+
 </head>
 
 <body>
 
-<header>
-    <h1>🌍 Life Route</h1>
-    <div>Select your photo folder:</div>
+<div id="top">
 
-    <input 
-        type="file" 
-        id="photos" 
-        accept="image/*"
-        webkitdirectory
-        directory
-        multiple
-    >
+<h2>🌍 Life Route</h2>
 
-    <p id="status">Waiting for photos...</p>
-</header>
+<input 
+id="photos"
+type="file"
+accept="image/*"
+webkitdirectory
+multiple
+hidden>
+
+<button onclick="photos.click()">
+Choose Photo Folder
+</button>
+
+<div id="status">
+Waiting for photos...
+</div>
+
+</div>
 
 
 <div id="map"></div>
@@ -60,174 +90,134 @@ input {
 
 <script>
 
-const map = L.map('map').setView([20,0],2);
+const map=L.map("map").setView([20,0],2);
 
 
 L.tileLayer(
-    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    {
-        attribution:'© OpenStreetMap'
-    }
+"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 ).addTo(map);
 
 
-let routePoints = [];
+let points=[];
 
 
-const status = document.getElementById("status");
+const status=document.getElementById("status");
 
 
-document
-.getElementById("photos")
-.addEventListener("change", async function(event){
+photos.addEventListener("change", async e=>{
 
-    routePoints=[];
+    points=[];
 
-    const files=[...event.target.files]
-        .filter(file=>file.type.startsWith("image/"));
-
-
-    status.innerHTML=
-        `Scanning ${files.length} photos...`;
+    const files=[
+        ...e.target.files
+    ].filter(
+        f=>f.type.startsWith("image/")
+    );
 
 
-    for(let i=0;i<files.length;i++){
-
-        const file=files[i];
-
-        try{
-
-            const data=await exifr.parse(
-                file,
-                {
-                    gps:true,
-                    DateTimeOriginal:true
-                }
-            );
+    status.innerText=
+    `Found ${files.length} photos`;
 
 
-            if(data && data.latitude && data.longitude){
+    const limit=Math.min(
+        files.length,
+        1000
+    );
 
-                routePoints.push({
+
+    for(
+        let i=0;
+        i<limit;
+        i++
+    ){
+
+        try {
+
+            const data=
+            await exifr.gps(files[i]);
+
+
+            if(data){
+
+                points.push({
 
                     lat:data.latitude,
                     lng:data.longitude,
 
                     date:
-                    data.DateTimeOriginal ||
-                    file.lastModified
+                    files[i].lastModified
 
                 });
 
             }
 
         }
-        catch(error){
-
-            console.log(
-                "Skipped:",
-                file.name
-            );
+        catch(err){
 
         }
 
 
-        if(i%100===0){
-            status.innerHTML=
-            `Scanning ${i}/${files.length} photos...`;
+        if(i%25===0){
+
+            status.innerText=
+            `Scanning ${i}/${limit}...`;
+
+            await new Promise(
+                r=>setTimeout(r,0)
+            );
+
         }
 
     }
 
 
-    routePoints.sort(
-        (a,b)=>
-        new Date(a.date)
-        -
-        new Date(b.date)
-    );
+    status.innerText=
+    `${points.length} locations found`;
 
 
-    status.innerHTML=
-    `${routePoints.length} locations found`;
-
-
-    drawRoute();
+    draw();
 
 });
 
 
 
-function drawRoute(){
-
-    map.eachLayer(layer=>{
-
-        if(
-            layer instanceof L.Polyline ||
-            layer instanceof L.Marker
-        ){
-            map.removeLayer(layer);
-        }
-
-    });
-
-
-
-    if(routePoints.length===0){
-
-        alert(
-        "No GPS data found in photos."
-        );
-
-        return;
-    }
-
-
+function draw(){
 
     let coords=[];
 
 
-    routePoints.forEach(point=>{
+    points.forEach(p=>{
 
-        const location=[
-            point.lat,
-            point.lng
-        ];
-
-
-        coords.push(location);
-
-
-        L.marker(location)
-        .addTo(map)
-        .bindPopup(
-            `
-            📸 ${new Date(point.date).toLocaleDateString()}
-            <br>
-            ${point.lat.toFixed(5)},
-            ${point.lng.toFixed(5)}
-            `
-        );
+        coords.push([
+            p.lat,
+            p.lng
+        ]);
 
     });
 
 
+    if(coords.length){
 
-    L.polyline(
-        coords,
-        {
-            color:"blue",
-            weight:4
-        }
-    )
-    .addTo(map);
-
+        L.polyline(
+            coords,
+            {
+                weight:4
+            }
+        ).addTo(map);
 
 
-    map.fitBounds(coords);
+        map.fitBounds(coords);
+
+    }
+    else{
+
+        alert(
+        "No GPS photos found"
+        );
+
+    }
 
 }
-
 
 </script>
 
