@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Life Route</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+body {
+    margin:0;
+    font-family:Arial, sans-serif;
+}
+
+header {
+    background:#111;
+    color:white;
+    padding:20px;
+}
+
+h1 {
+    margin:0 0 10px 0;
+}
+
+#map {
+    height:calc(100vh - 120px);
+}
+
+input {
+    margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🌍 Life Route</h1>
+    <div>Select your photo folder:</div>
+
+    <input 
+        type="file" 
+        id="photos" 
+        accept="image/*"
+        webkitdirectory
+        directory
+        multiple
+    >
+
+    <p id="status">Waiting for photos...</p>
+</header>
+
+
+<div id="map"></div>
+
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+
+
+<script>
+
+const map = L.map('map').setView([20,0],2);
+
+
+L.tileLayer(
+    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+        attribution:'© OpenStreetMap'
+    }
+).addTo(map);
+
+
+let routePoints = [];
+
+
+const status = document.getElementById("status");
+
+
+document
+.getElementById("photos")
+.addEventListener("change", async function(event){
+
+    routePoints=[];
+
+    const files=[...event.target.files]
+        .filter(file=>file.type.startsWith("image/"));
+
+
+    status.innerHTML=
+        `Scanning ${files.length} photos...`;
+
+
+    for(let i=0;i<files.length;i++){
+
+        const file=files[i];
+
+        try{
+
+            const data=await exifr.parse(
+                file,
+                {
+                    gps:true,
+                    DateTimeOriginal:true
+                }
+            );
+
+
+            if(data && data.latitude && data.longitude){
+
+                routePoints.push({
+
+                    lat:data.latitude,
+                    lng:data.longitude,
+
+                    date:
+                    data.DateTimeOriginal ||
+                    file.lastModified
+
+                });
+
+            }
+
+        }
+        catch(error){
+
+            console.log(
+                "Skipped:",
+                file.name
+            );
+
+        }
+
+
+        if(i%100===0){
+            status.innerHTML=
+            `Scanning ${i}/${files.length} photos...`;
+        }
+
+    }
+
+
+    routePoints.sort(
+        (a,b)=>
+        new Date(a.date)
+        -
+        new Date(b.date)
+    );
+
+
+    status.innerHTML=
+    `${routePoints.length} locations found`;
+
+
+    drawRoute();
+
+});
+
+
+
+function drawRoute(){
+
+    map.eachLayer(layer=>{
+
+        if(
+            layer instanceof L.Polyline ||
+            layer instanceof L.Marker
+        ){
+            map.removeLayer(layer);
+        }
+
+    });
+
+
+
+    if(routePoints.length===0){
+
+        alert(
+        "No GPS data found in photos."
+        );
+
+        return;
+    }
+
+
+
+    let coords=[];
+
+
+    routePoints.forEach(point=>{
+
+        const location=[
+            point.lat,
+            point.lng
+        ];
+
+
+        coords.push(location);
+
+
+        L.marker(location)
+        .addTo(map)
+        .bindPopup(
+            `
+            📸 ${new Date(point.date).toLocaleDateString()}
+            <br>
+            ${point.lat.toFixed(5)},
+            ${point.lng.toFixed(5)}
+            `
+        );
+
+    });
+
+
+
+    L.polyline(
+        coords,
+        {
+            color:"blue",
+            weight:4
+        }
+    )
+    .addTo(map);
+
+
+
+    map.fitBounds(coords);
+
+}
+
+
+</script>
+
+</body>
+</html>
