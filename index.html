@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Liferoute</title>
+<title>Liferoute - Debug Mode</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { 
     margin: 0; 
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, monospace;
     overflow: hidden;
     background: #000;
 }
@@ -21,44 +21,29 @@ body {
     width: 100%;
     padding: 16px;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.95);
+    color: #0f0;
     border-radius: 0 0 22px 22px;
-    box-shadow: 0 4px 30px rgba(0,0,0,0.2);
 }
 
-h2 {
-    margin: 0 0 12px;
-    color: #111;
-    font-weight: 700;
-}
+h2 { margin: 0 0 12px; }
 
 button {
     width: 100%;
     padding: 16px;
     border: 0;
     border-radius: 16px;
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #111;
+    background: #FFD700;
+    color: #000;
     font-size: 18px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
 }
 
-button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4); }
-button.active {
-    background: #111;
-    color: #FFD700;
-    transform: scale(0.96);
-}
+button.active { background: #0f0; color: #000; transform: scale(0.96); }
 
-#status {
-    margin-top: 12px;
-    font-size: 14px;
-    color: #666;
-}
+#status { margin-top: 12px; font-size: 14px; color: #fff; }
 
 #loader {
     display: none;
@@ -66,20 +51,17 @@ button.active {
     height: 35px;
     margin: 15px auto;
     border-radius: 50%;
-    border: 5px solid #eee;
-    border-top: 5px solid #111;
+    border: 5px solid #333;
+    border-top: 5px solid #0f0;
     animation: spin 0.5s linear infinite;
 }
 
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 #progressOuter {
     display: none;
     height: 10px;
-    background: #eee;
+    background: #333;
     border-radius: 10px;
     overflow: hidden;
     margin-top: 10px;
@@ -88,7 +70,7 @@ button.active {
 #progress {
     width: 0%;
     height: 100%;
-    background: linear-gradient(90deg, #FFD700, #FFA500);
+    background: #0f0;
     transition: width 0.2s ease;
 }
 
@@ -99,71 +81,54 @@ button.active {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.98);
     padding: 25px;
     width: 80%;
-    max-width: 400px;
+    max-width: 500px;
     border-radius: 20px;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    color: #0f0;
 }
 
-#popupText { color: #111; }
-
-#map {
-    height: 100vh;
-    width: 100%;
-}
-
-#stats {
+#debugOutput {
     position: absolute;
     bottom: 20px;
     left: 20px;
+    right: 20px;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    padding: 12px 16px;
-    border-radius: 12px;
-    font-size: 13px;
-    color: #666;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.95);
+    color: #0f0;
+    padding: 15px;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 11px;
+    max-height: 300px;
+    overflow-y: auto;
     display: none;
+    white-space: pre-wrap;
 }
 
-#clusterInfo {
+#map { height: 100vh; width: 100%; }
+
+.debug-btn {
     position: absolute;
     bottom: 20px;
     right: 20px;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    padding: 12px 16px;
-    border-radius: 12px;
-    font-size: 13px;
-    color: #666;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    display: none;
-}
-
-.marker-cluster {
-    background: #FFD700;
-    border-radius: 50%;
-    color: #111;
-    font-weight: bold;
-    box-shadow: 0 0 0 5px rgba(255, 215, 0, 0.3);
-}
-
-.leaflet-control-attribution {
-    background: transparent;
-    color: #666;
+    z-index: 1001;
+    background: #f00;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
 }
 </style>
 </head>
 
 <body>
 <div id="panel">
-    <h2>Liferoute</h2>
+    <h2>Liferoute - DEBUG MODE</h2>
     <input id="folder" type="file" accept="image/*" webkitdirectory directory multiple hidden>
     <button id="button">Choose Photo Folder</button>
     <div id="status">Waiting for photos</div>
@@ -175,43 +140,64 @@ button.active {
     <div id="popupText">Preparing</div>
 </div>
 
-<div id="stats"></div>
-<div id="clusterInfo"></div>
+<button class="debug-btn" onclick="toggleDebug()">Toggle Debug</button>
+<div id="debugOutput"></div>
+
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
 <script>
 // ============================================
-// CONFIGURATION
+// DEBUG SYSTEM
 // ============================================
-const CONFIG = {
-    MAX_FILES: 2000,
-    WORKER_COUNT: 4,
-    BATCH_SIZE: 10,
-    MAX_DISTANCE_KM: 100,
-    MAX_TIME_GAP_HOURS: 12,
-    ANIMATION_SPEED: 40,
-    CLUSTER_ZOOM: 14
-};
+const debugLogs = [];
+const MAX_LOGS = 100;
+
+function log(message, data = null) {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    const logEntry = `[${timestamp}] ${message}`;
+    debugLogs.push(logEntry);
+    if (debugLogs.length > MAX_LOGS) debugLogs.shift();
+    
+    if (data) {
+        console.log(logEntry, data);
+    } else {
+        console.log(logEntry);
+    }
+    
+    updateDebugDisplay();
+}
+
+function updateDebugDisplay() {
+    const output = document.getElementById('debugOutput');
+    if (output.style.display === 'block') {
+        output.textContent = debugLogs.join('\n');
+        output.scrollTop = output.scrollHeight;
+    }
+}
+
+function toggleDebug() {
+    const output = document.getElementById('debugOutput');
+    output.style.display = output.style.display === 'block' ? 'none' : 'block';
+    if (output.style.display === 'block') {
+        updateDebugDisplay();
+    }
+}
 
 // ============================================
-// STATE MANAGEMENT
+// STATE
 // ============================================
 const state = {
     map: null,
-    markerCluster: null,
     markers: [],
     lines: [],
     photos: [],
-    routeSegments: [],
-    bounds: null,
-    stats: { total: 0, withGPS: 0, processed: 0, time: 0 }
+    routeSegments: []
 };
 
 // ============================================
-// DOM ELEMENTS
+// DOM
 // ============================================
 const elements = {
     folder: document.getElementById('folder'),
@@ -221,219 +207,197 @@ const elements = {
     progress: document.getElementById('progress'),
     progressOuter: document.getElementById('progressOuter'),
     popup: document.getElementById('popup'),
-    popupText: document.getElementById('popupText'),
-    stats: document.getElementById('stats'),
-    clusterInfo: document.getElementById('clusterInfo')
+    popupText: document.getElementById('popupText')
 };
 
 // ============================================
-// INITIALIZATION
+// INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    initMap();
-    initEventListeners();
-});
-
-function initMap() {
-    state.map = L.map('map', {
-        zoomControl: false,
-        doubleClickZoom: false,
-        gestureHandling: true
-    }).setView([20, 0], 2);
-
+    state.map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
         maxZoom: 19
     }).addTo(state.map);
-
-    state.markerCluster = L.markerClusterGroup({
-        maxClusterRadius: 50,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        iconCreateFunction: createClusterIcon
-    });
-
-    // Add zoom controls back
     L.control.zoom({ position: 'bottomright' }).addTo(state.map);
-}
 
-function createClusterIcon(cluster) {
-    return L.divIcon({
-        html: '<div class="marker-cluster">' + cluster.getChildCount() + '</div>',
-        className: 'marker-cluster-wrapper',
-        iconSize: L.point(40, 40)
-    });
-}
-
-function initEventListeners() {
     elements.button.onclick = () => elements.folder.click();
-
     elements.folder.addEventListener('change', async (e) => {
         await processFiles(e.target.files);
     });
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') resetMap();
-    });
-}
+    log('DEBUG MODE ACTIVE - Check console and debug panel');
+});
 
 // ============================================
-// CORE PROCESSING
+// FILE PROCESSING
 // ============================================
 async function processFiles(fileList) {
     resetMap();
+    debugLogs.length = 0;
     
-    const files = [...fileList]
-        .filter(f => f.type.startsWith('image/'))
-        .slice(0, CONFIG.MAX_FILES);
-
+    const files = [...fileList].filter(f => f.type.startsWith('image/')).slice(0, 500);
     if (files.length === 0) return;
 
+    log(`Starting with ${files.length} files`);
     updateUI('loading', `Processing ${files.length} files...`);
-    state.stats = { total: files.length, withGPS: 0, processed: 0, time: Date.now() };
 
-    // Process in optimized batches
-    state.photos = await extractPhotosOptimized(files);
+    state.photos = await extractPhotosWithDebug(files);
 
     if (state.photos.length === 0) {
-        updateUI('error', 'No GPS data found in photos. Try photos taken with location enabled.');
+        log('NO PHOTOS WITH GPS FOUND!');
+        updateUI('error', 'No GPS data found. Check debug output.');
         return;
     }
 
-    updateUI('processing', 'Building route...');
-    
-    // Sort by date
+    log(`Found ${state.photos.length} photos with GPS data`);
     state.photos.sort((a, b) => a.date - b.date);
-    
-    // Build trips
     state.routeSegments = buildTrips(state.photos);
     
-    // Draw everything
     drawRoutes();
     drawMarkers();
     
-    // Fit map to bounds
-    fitMapToData();
-    
+    setTimeout(() => {
+        const bounds = L.latLngBounds(state.photos.map(p => [p.lat, p.lng]));
+        state.map.fitBounds(bounds, { padding: [60, 60] });
+    }, 500);
+
     updateUI('complete', `${state.photos.length} locations found`);
-    updateStats();
 }
 
 // ============================================
-// OPTIMIZED PHOTO EXTRACTION
+// EXTRACTION WITH FULL DEBUGGING
 // ============================================
-async function extractPhotosOptimized(files) {
+async function extractPhotosWithDebug(files) {
     const results = [];
-    const queue = [...files];
     let done = 0;
-    let withGPS = 0;
 
-    // Create worker pool
-    const workers = [];
-    for (let i = 0; i < CONFIG.WORKER_COUNT; i++) {
-        workers.push(createWorker(queue, results, () => {
-            done++;
-            updateProgress(done, files.length);
-        }));
+    for (const file of files) {
+        log(`Processing: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+        
+        const data = await readPhotoWithFullDebug(file);
+        if (data) {
+            results.push(data);
+            log(`  ✓ SUCCESS: lat=${data.lat.toFixed(6)}, lng=${data.lng.toFixed(6)}`);
+        } else {
+            log(`  ✗ FAILED: No GPS data extracted`);
+        }
+        
+        done++;
+        updateProgress(done, files.length);
+        await new Promise(r => setTimeout(r, 0));
     }
 
-    await Promise.all(workers);
     return results;
 }
 
-function createWorker(queue, results, onComplete) {
-    return new Promise(async (resolve) => {
-        while (queue.length > 0) {
-            const file = queue.shift();
-            const data = await readPhotoOptimized(file);
-            if (data) {
-                results.push(data);
-            }
-            onComplete();
-            
-            // Yield to event loop periodically
-            if (queue.length % CONFIG.BATCH_SIZE === 0) {
-                await new Promise(r => setTimeout(r, 0));
-            }
-        }
-        resolve();
-    });
-}
-
-function updateProgress(done, total) {
-    const percent = Math.round((done / total) * 100);
-    elements.progress.style.width = `${percent}%`;
-    elements.status.textContent = `Processing ${done}/${total} (${percent}%)`;
-}
-
-// ============================================
-// ROBUST GPS EXTRACTION
-// ============================================
-async function readPhotoOptimized(file) {
+async function readPhotoWithFullDebug(file) {
     try {
-        // Use pick to only parse what we need for speed
-        const exif = await exifr.parse(file, {
-            pick: [
-                'latitude', 'longitude',
-                'GPSLatitude', 'GPSLongitude',
-                'GPSLatitudeRef', 'GPSLongitudeRef',
-                'DateTimeOriginal', 'DateTime', 'CreateDate',
-                'Make', 'Model'
-            ]
-        });
+        log(`  Parsing EXIF for ${file.name}...`);
+        
+        // Parse EVERYTHING to see what's available
+        const exif = await exifr.parse(file);
+        
+        if (!exif) {
+            log(`  No EXIF data found`);
+            return null;
+        }
 
-        if (!exif) return null;
+        log(`  EXIF tags found: ${Object.keys(exif).length}`);
+        
+        // Log ALL GPS-related tags
+        const gpsTags = Object.keys(exif).filter(k => 
+            k.toLowerCase().includes('gps') || 
+            k.toLowerCase().includes('lat') || 
+            k.toLowerCase().includes('long')
+        );
+        
+        if (gpsTags.length > 0) {
+            log(`  GPS-related tags: ${gpsTags.join(', ')}`);
+            gpsTags.forEach(tag => {
+                log(`    ${tag}: ${JSON.stringify(exif[tag])}`);
+            });
+        } else {
+            log(`  No GPS-related tags found`);
+        }
 
-        // Try multiple GPS extraction methods
-        const coords = extractCoordinates(exif);
-        if (!coords) return null;
+        // Try to extract coordinates
+        const coords = extractCoordinatesWithDebug(exif);
+        if (!coords) {
+            log(`  Could not extract coordinates from available data`);
+            return null;
+        }
 
+        log(`  Coordinates extracted: lat=${coords.lat}, lng=${coords.lng}`);
+        
         // Extract date
-        const date = extractDate(exif, file);
+        const date = extractDateWithDebug(exif, file);
+        log(`  Date: ${date.toISOString()}`);
 
         return {
             lat: coords.lat,
             lng: coords.lng,
             date: date,
-            fileName: file.name,
-            make: exif.Make,
-            model: exif.Model
+            fileName: file.name
         };
     } catch (e) {
-        console.warn(`Error reading ${file.name}:`, e);
+        log(`  ERROR: ${e.message}`);
         return null;
     }
 }
 
-function extractCoordinates(exif) {
-    // Method 1: Direct decimal coordinates (some libraries provide these)
+function extractCoordinatesWithDebug(exif) {
+    // Method 1: Direct decimal
     if (exif.latitude !== undefined && exif.longitude !== undefined) {
+        log(`  Method 1: Direct decimal - lat=${exif.latitude}, lng=${exif.longitude}`);
         const lat = parseFloat(exif.latitude);
         const lng = parseFloat(exif.longitude);
-        if (!isNaN(lat) && !isNaN(lng)) {
-            return { lat, lng };
-        }
+        if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
     }
 
-    // Method 2: Standard GPS tags in DMS format
+    // Method 2: Standard GPS tags
     if (exif.GPSLatitude && exif.GPSLongitude) {
+        log(`  Method 2: Standard GPS tags`);
+        log(`    GPSLatitude: ${JSON.stringify(exif.GPSLatitude)}`);
+        log(`    GPSLongitude: ${JSON.stringify(exif.GPSLongitude)}`);
+        log(`    GPSLatitudeRef: ${exif.GPSLatitudeRef}`);
+        log(`    GPSLongitudeRef: ${exif.GPSLongitudeRef}`);
+        
         const lat = convertDMSToDD(exif.GPSLatitude, exif.GPSLatitudeRef);
         const lng = convertDMSToDD(exif.GPSLongitude, exif.GPSLongitudeRef);
         if (lat !== null && lng !== null) {
+            log(`    Converted to: lat=${lat}, lng=${lng}`);
             return { lat, lng };
         }
     }
 
-    // Method 3: Check for GPS data in different formats
-    // Pixel 9 Pro and other modern devices might use these
+    // Method 3: Nested GPSInfo
     if (exif.GPSInfo) {
+        log(`  Method 3: Nested GPSInfo`);
+        log(`    GPSInfo: ${JSON.stringify(exif.GPSInfo)}`);
         if (exif.GPSInfo.GPSLatitude && exif.GPSInfo.GPSLongitude) {
             const lat = convertDMSToDD(exif.GPSInfo.GPSLatitude, exif.GPSInfo.GPSLatitudeRef);
             const lng = convertDMSToDD(exif.GPSInfo.GPSLongitude, exif.GPSInfo.GPSLongitudeRef);
             if (lat !== null && lng !== null) {
+                log(`    Converted to: lat=${lat}, lng=${lng}`);
                 return { lat, lng };
             }
+        }
+    }
+
+    // Method 4: Check for XMP GPS data
+    if (exif.xmp) {
+        log(`  Method 4: XMP data found`);
+        log(`    XMP: ${JSON.stringify(exif.xmp)}`);
+    }
+
+    // Method 5: Brute force - check ALL keys for lat/lng patterns
+    log(`  Method 5: Brute force search...`);
+    for (const [key, value] of Object.entries(exif)) {
+        const strValue = String(value).toLowerCase();
+        if (strValue.match(/-?\d+\.\d+,\s*-?\d+\.\d+/) || 
+            strValue.match(/-?\d+\.\d+\s+-?\d+\.\d+/)) {
+            log(`    Suspicious value in ${key}: ${value}`);
         }
     }
 
@@ -444,7 +408,6 @@ function convertDMSToDD(dms, hemisphere) {
     if (!dms || dms.length < 3) return null;
 
     try {
-        // Handle both rational {num, den} and decimal formats
         const deg = typeof dms[0] === 'object' ? dms[0].num / dms[0].den : parseFloat(dms[0]);
         const min = typeof dms[1] === 'object' ? dms[1].num / dms[1].den : parseFloat(dms[1]);
         const sec = typeof dms[2] === 'object' ? dms[2].num / dms[2].den : parseFloat(dms[2]);
@@ -452,52 +415,33 @@ function convertDMSToDD(dms, hemisphere) {
         if (isNaN(deg) || isNaN(min) || isNaN(sec)) return null;
 
         let dd = deg + (min / 60) + (sec / 3600);
-
-        // Adjust for hemisphere
-        if (hemisphere === 'S' || hemisphere === 'W') {
-            dd = -dd;
-        }
-
-        // Validate range
+        if (hemisphere === 'S' || hemisphere === 'W') dd = -dd;
+        
         if (dd < -180 || dd > 180) return null;
-
         return dd;
     } catch (e) {
         return null;
     }
 }
 
-function extractDate(exif, file) {
-    // Try multiple date fields in order of preference
-    const dateFields = ['DateTimeOriginal', 'DateTime', 'CreateDate'];
+function extractDateWithDebug(exif, file) {
+    const dateFields = ['DateTimeOriginal', 'DateTime', 'CreateDate', 'GPSDateStamp'];
     
     for (const field of dateFields) {
         if (exif[field]) {
             try {
-                // Handle different date formats
                 const date = new Date(exif[field]);
                 if (!isNaN(date.getTime())) {
+                    log(`  Date from ${field}: ${exif[field]} -> ${date.toISOString()}`);
                     return date;
                 }
             } catch (e) {
-                // Try parsing manually
-                const dateStr = String(exif[field]);
-                // Format: YYYY:MM:DD HH:MM:SS
-                const parts = dateStr.split(/[:\s]/);
-                if (parts.length >= 6) {
-                    const year = parseInt(parts[0]);
-                    const month = parseInt(parts[1]) - 1;
-                    const day = parseInt(parts[2]);
-                    const hour = parseInt(parts[3]);
-                    const minute = parseInt(parts[4]);
-                    const second = parseInt(parts[5]);
-                    return new Date(year, month, day, hour, minute, second);
-                }
+                log(`  Failed to parse ${field}: ${exif[field]}`);
             }
         }
     }
 
-    // Fallback to file modification date
+    log(`  Using file modification date: ${new Date(file.lastModified).toISOString()}`);
     return new Date(file.lastModified);
 }
 
@@ -510,7 +454,6 @@ function buildTrips(points) {
 
     for (let i = 0; i < points.length; i++) {
         const point = points[i];
-
         if (current.length === 0) {
             current.push(point);
             continue;
@@ -520,64 +463,42 @@ function buildTrips(points) {
         const km = haversineDistance(previous, point);
         const hours = (point.date - previous.date) / 3600000;
 
-        // Split into new trip if too far apart in distance or time
-        if (km > CONFIG.MAX_DISTANCE_KM || hours > CONFIG.MAX_TIME_GAP_HOURS) {
+        if (km > 100 || hours > 12) {
             trips.push(current);
             current = [];
         }
-
         current.push(point);
     }
 
-    if (current.length > 0) {
-        trips.push(current);
-    }
-
+    if (current.length > 0) trips.push(current);
     return trips;
 }
 
-// ============================================
-// GEO CALCULATIONS
-// ============================================
 function haversineDistance(a, b) {
-    const R = 6371; // Earth radius in km
+    const R = 6371;
     const dLat = (b.lat - a.lat) * Math.PI / 180;
     const dLng = (b.lng - a.lng) * Math.PI / 180;
-    
     const lat1 = a.lat * Math.PI / 180;
     const lat2 = b.lat * Math.PI / 180;
-
-    const sinDLat = Math.sin(dLat / 2);
-    const sinDLng = Math.sin(dLng / 2);
-
-    const x = sinDLat * sinDLat + 
-              Math.cos(lat1) * Math.cos(lat2) * 
-              sinDLng * sinDLng;
-    
-    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    const x = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
 }
 
 // ============================================
 // RENDERING
 // ============================================
 function drawRoutes() {
-    // Clear existing lines
     state.lines.forEach(line => state.map.removeLayer(line));
     state.lines = [];
 
     state.routeSegments.forEach(segment => {
         if (segment.length < 2) return;
-
         const coords = segment.map(p => [p.lat, p.lng]);
-        
         const line = L.polyline([], {
-            color: '#FFD700',
+            color: '#0f0',
             weight: 4,
-            opacity: 0.8,
-            lineCap: 'round',
-            lineJoin: 'round'
+            opacity: 0.8
         }).addTo(state.map);
-
         state.lines.push(line);
         animateLine(line, coords);
     });
@@ -586,57 +507,36 @@ function drawRoutes() {
 function animateLine(line, coords) {
     let index = 0;
     const current = [];
-
     function step() {
         if (index >= coords.length) return;
         current.push(coords[index]);
         line.setLatLngs(current);
         index++;
-        setTimeout(step, CONFIG.ANIMATION_SPEED);
+        setTimeout(step, 40);
     }
-
     step();
 }
 
 function drawMarkers() {
-    // Clear existing markers
-    state.markerCluster.clearLayers();
+    state.markers.forEach(m => state.map.removeLayer(m));
     state.markers = [];
 
     state.photos.forEach(photo => {
         const marker = L.circleMarker([photo.lat, photo.lng], {
             radius: 4,
-            fillColor: '#FFD700',
-            color: '#FFA500',
+            fillColor: '#0f0',
+            color: '#0a0',
             weight: 1,
             opacity: 1,
             fillOpacity: 0.8
         });
-        
         state.markers.push(marker);
-        state.markerCluster.addLayer(marker);
+        marker.addTo(state.map);
     });
-
-    state.map.addLayer(state.markerCluster);
-}
-
-function fitMapToData() {
-    if (state.photos.length === 0) return;
-
-    const bounds = L.latLngBounds(
-        state.photos.map(p => [p.lat, p.lng])
-    );
-
-    setTimeout(() => {
-        state.map.fitBounds(bounds, {
-            padding: [60, 60],
-            maxZoom: 16
-        });
-    }, 500);
 }
 
 // ============================================
-// UI UPDATES
+// UI
 // ============================================
 function updateUI(state, message) {
     switch (state) {
@@ -649,21 +549,16 @@ function updateUI(state, message) {
             elements.popupText.textContent = message;
             elements.status.textContent = message;
             break;
-
         case 'processing':
             elements.popupText.textContent = message;
             elements.status.textContent = message;
             break;
-
         case 'complete':
             elements.popupText.textContent = message;
             elements.status.textContent = message;
-            setTimeout(() => {
-                elements.popup.style.display = 'none';
-            }, 1500);
+            setTimeout(() => elements.popup.style.display = 'none', 1500);
             finishButton();
             break;
-
         case 'error':
             elements.popupText.textContent = message;
             elements.status.textContent = message;
@@ -672,15 +567,10 @@ function updateUI(state, message) {
     }
 }
 
-function updateStats() {
-    const elapsed = ((Date.now() - state.stats.time) / 1000).toFixed(1);
-    const avgTime = (elapsed / state.photos.length).toFixed(2);
-    
-    elements.stats.textContent = `${state.photos.length} locations | ${elapsed}s | ${avgTime}s/photo`;
-    elements.stats.style.display = 'block';
-    
-    elements.clusterInfo.textContent = `${state.routeSegments.length} trips`;
-    elements.clusterInfo.style.display = 'block';
+function updateProgress(done, total) {
+    const percent = Math.round((done / total) * 100);
+    elements.progress.style.width = `${percent}%`;
+    elements.status.textContent = `Processing ${done}/${total} (${percent}%)`;
 }
 
 function finishButton() {
@@ -691,31 +581,13 @@ function finishButton() {
     elements.progress.style.width = '0%';
 }
 
-// ============================================
-// CLEANUP
-// ============================================
 function resetMap() {
     state.lines.forEach(line => state.map.removeLayer(line));
-    if (state.markerCluster) {
-        state.map.removeLayer(state.markerCluster);
-        state.markerCluster.clearLayers();
-    }
-    
+    state.markers.forEach(m => state.map.removeLayer(m));
     state.lines = [];
     state.markers = [];
     state.photos = [];
     state.routeSegments = [];
-    state.bounds = null;
-    
-    elements.stats.style.display = 'none';
-    elements.clusterInfo.style.display = 'none';
-}
-
-// ============================================
-// UTILITY
-// ============================================
-function pause() {
-    return new Promise(resolve => setTimeout(resolve, 0));
 }
 </script>
 </body>
