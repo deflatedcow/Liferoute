@@ -42,9 +42,7 @@ body {
 
 
 h2 {
-
     margin:0 0 12px;
-
 }
 
 
@@ -59,11 +57,13 @@ button {
 
     border-radius:14px;
 
-    background:#111;
+    background:#FFD700;
 
-    color:white;
+    color:#111;
 
     font-size:18px;
+
+    font-weight:700;
 
 }
 
@@ -231,10 +231,7 @@ const map = L.map("map")
 L.tileLayer(
 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
 {
-
-attribution:
-"© OpenStreetMap"
-
+attribution:"© OpenStreetMap"
 }
 ).addTo(map);
 
@@ -279,9 +276,7 @@ points=[];
 let files =
 [...e.target.files]
 .filter(file =>
-
 file.type.startsWith("image/")
-
 );
 
 
@@ -584,13 +579,9 @@ const route =
 L.polyline(
 coords,
 {
-
 color:"blue",
-
 weight:5,
-
 opacity:.8
-
 }
 
 )
@@ -631,9 +622,7 @@ map.fitBounds(
 route.getBounds(),
 
 {
-
 padding:[40,40]
-
 }
 
 );
