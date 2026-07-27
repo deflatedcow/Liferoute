@@ -46,6 +46,7 @@ h2 {
 }
 
 
+
 button {
 
     width:100%;
@@ -64,32 +65,19 @@ button {
 
     font-weight:700;
 
-    transition:.25s;
+    transition:.3s;
 
 }
+
 
 
 button.scanning {
 
-    animation:pulse .8s infinite;
+    background:#222;
 
-}
+    color:#FFD700;
 
-
-
-@keyframes pulse {
-
-    0% {
-        transform:scale(1);
-    }
-
-    50% {
-        transform:scale(1.05);
-    }
-
-    100% {
-        transform:scale(1);
-    }
+    transform:scale(.97);
 
 }
 
@@ -109,9 +97,9 @@ button.scanning {
 
     display:none;
 
-    width:38px;
+    width:35px;
 
-    height:38px;
+    height:35px;
 
     margin:15px auto;
 
@@ -119,9 +107,9 @@ button.scanning {
 
     border:5px solid #ddd;
 
-    border-top:5px solid #111;
+    border-top:5px solid #222;
 
-    animation:spin .35s linear infinite;
+    animation:spin .5s linear infinite;
 
 }
 
@@ -145,13 +133,15 @@ button.scanning {
 
     display:none;
 
+    width:100%;
+
     height:10px;
 
-    width:100%;
+    margin-top:10px;
 
     background:#ddd;
 
-    border-radius:20px;
+    border-radius:10px;
 
     overflow:hidden;
 
@@ -165,15 +155,13 @@ button.scanning {
 
     height:100%;
 
-    background:#111;
-
-    transition:.2s;
+    background:#222;
 
 }
 
 
 
-.processing-popup {
+.popup {
 
     display:none;
 
@@ -189,29 +177,15 @@ button.scanning {
 
     background:white;
 
-    padding:25px;
-
     width:80%;
 
-    max-width:350px;
-
-    text-align:center;
+    padding:25px;
 
     border-radius:20px;
 
+    text-align:center;
+
     box-shadow:0 10px 30px rgba(0,0,0,.3);
-
-    font-size:18px;
-
-}
-
-
-
-.processing-popup .emoji {
-
-    font-size:40px;
-
-    margin-bottom:10px;
 
 }
 
@@ -236,72 +210,49 @@ button.scanning {
 
 <div id="top">
 
-
-<h2>🌱 Life Root</h2>
+<h2>Life Root</h2>
 
 
 <input
-
 id="photos"
-
 type="file"
-
 accept="image/*"
-
 webkitdirectory
-
 directory
-
 multiple
-
 hidden
-
 >
 
 
 <button id="chooseButton">
-
 Choose Photo Folder
-
 </button>
 
 
 <div id="status">
-
-Waiting for photos...
-
+Waiting for photos
 </div>
 
 
 <div id="loader" class="loader"></div>
 
 
-<div id="progress-container" class="progress-container">
+<div class="progress-container" id="progressContainer">
 
-<div id="progress-bar" class="progress-bar"></div>
-
-</div>
-
+<div class="progress-bar" id="progressBar"></div>
 
 </div>
 
 
-
-<div id="processing-popup" class="processing-popup">
-
-<div class="emoji">
-
-🌱
-
 </div>
 
 
-<div id="processing-text">
 
-Growing your route...
+<div class="popup" id="popup">
 
+<div id="popupText">
+Building route
 </div>
-
 
 </div>
 
@@ -316,10 +267,8 @@ Growing your route...
 <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
 <script>
 
-
 const map = L.map("map")
 .setView([20,0],2);
-
 
 
 L.tileLayer(
@@ -331,18 +280,10 @@ attribution:"© OpenStreetMap"
 
 
 
-let points = [];
-
-let drawnPoints = [];
-
-let routeLine = null;
-
-
-
 const photos =
 document.getElementById("photos");
 
-const chooseButton =
+const button =
 document.getElementById("chooseButton");
 
 const status =
@@ -351,30 +292,37 @@ document.getElementById("status");
 const loader =
 document.getElementById("loader");
 
-const progressBar =
-document.getElementById("progress-bar");
-
-const progressContainer =
-document.getElementById("progress-container");
-
 const popup =
-document.getElementById("processing-popup");
+document.getElementById("popup");
 
 const popupText =
-document.getElementById("processing-text");
+document.getElementById("popupText");
+
+const progressBar =
+document.getElementById("progressBar");
+
+const progressContainer =
+document.getElementById("progressContainer");
 
 
 
-const cache = new Map();
+let routeSegments = [];
+
+let currentSegment = [];
+
+let polylines = [];
+
+let cache = new Map();
 
 
 
 
-chooseButton.onclick = ()=>{
+button.onclick = ()=>{
 
     photos.click();
 
 };
+
 
 
 
@@ -385,36 +333,29 @@ photos.addEventListener(
 async function(e){
 
 
-points=[];
+routeSegments=[];
 
-drawnPoints=[];
+currentSegment=[];
 
 
+polylines.forEach(
+p=>map.removeLayer(p)
+);
 
-if(routeLine){
-
-map.removeLayer(routeLine);
-
-routeLine=null;
-
-}
+polylines=[];
 
 
 
 let files =
 [...e.target.files]
-.filter(file =>
-file.type.startsWith("image/")
-);
+.filter(
+f=>f.type.startsWith("image/")
+)
+.slice(0,1000);
 
 
 
-files =
-files.slice(0,1000);
-
-
-
-if(files.length===0){
+if(!files.length){
 
 alert("No photos found");
 
@@ -424,10 +365,10 @@ return;
 
 
 
-chooseButton.classList.add("scanning");
+button.classList.add("scanning");
 
-chooseButton.innerText =
-"Growing Life Root...";
+button.innerText =
+"Scanning";
 
 
 
@@ -440,150 +381,88 @@ progressContainer.style.display="block";
 
 
 popupText.innerText =
-"🔍 Scanning photos...";
+"Extracting photo data";
 
 
 
-let queue=[...files];
-
-let finished=0;
+let photosWithData=[];
 
 
 
-async function worker(){
-
-
-while(queue.length){
-
-
-let file =
-queue.shift();
-
-
-
-try{
+for(
+let i=0;
+i<files.length;
+i++
+){
 
 
 let result =
-await scanPhoto(file);
+await scanPhoto(files[i]);
 
 
 
 if(result){
 
-points.push(result);
-
-
-points.sort(
-(a,b)=>
-new Date(a.date)
--
-new Date(b.date)
-);
-
-
-
-addPointToRoute(result);
-
-
+photosWithData.push(result);
 
 }
 
-
-
-}
-
-catch(err){
-
-console.log(err);
-
-}
-
-
-
-finished++;
-
-
-
-let percent =
-(finished/files.length)*100;
 
 
 progressBar.style.width =
-percent+"%";
+((i+1)/files.length*100)+"%";
 
-
-
-if(finished % 10 === 0){
 
 
 status.innerText =
-`Extracting locations ${finished}/${files.length}`;
-
-
-popupText.innerText =
-`📍 Extracting GPS + time
-
-${finished}/${files.length}`;
-
-
-await new Promise(
-r=>setTimeout(r,0)
-);
+`Extracting ${i+1}/${files.length}`;
 
 
 }
 
 
 
-}
-
-
-
-}
-
-
-
-
-
-await Promise.all([
-
-worker(),
-
-worker(),
-
-worker(),
-
-worker()
-
-]);
-
-
-
-
-popupText.innerText =
-"🗺️ Finishing route...";
-
-
-status.innerText =
-`${points.length} locations found`;
-
-
-
-await new Promise(
-r=>setTimeout(r,1000)
+photosWithData.sort(
+(a,b)=>
+a.date-b.date
 );
 
 
 
 popupText.innerText =
-"✨ Route complete";
+"Building route";
 
 
 
-chooseButton.classList.remove("scanning");
+for(
+let i=0;
+i<photosWithData.length;
+i++
+){
 
-chooseButton.innerText =
+
+addToRoute(
+photosWithData[i]
+);
+
+
+
+}
+
+
+
+popupText.innerText =
+"Complete";
+
+
+status.innerText =
+`${photosWithData.length} locations found`;
+
+
+
+button.classList.remove("scanning");
+
+button.innerText =
 "Choose Photo Folder";
 
 
@@ -610,8 +489,8 @@ progressContainer.style.display="none";
 
 
 
-
 async function scanPhoto(file){
+
 
 
 if(cache.has(file.name)){
@@ -622,15 +501,24 @@ return cache.get(file.name);
 
 
 
-const gps =
+let gps =
 await exifr.gps(file);
+
+
+
+let date =
+await exifr.parse(
+file,
+[
+"DateTimeOriginal"
+]
+);
 
 
 
 if(
 !gps ||
-gps.latitude===undefined ||
-gps.longitude===undefined
+gps.latitude===undefined
 ){
 
 return null;
@@ -645,7 +533,12 @@ lat:Number(gps.latitude),
 
 lng:Number(gps.longitude),
 
-date:file.lastModified
+date:
+date?.DateTimeOriginal
+?
+new Date(date.DateTimeOriginal)
+:
+new Date(file.lastModified)
 
 };
 
@@ -668,62 +561,43 @@ return result;
 
 
 
+function distance(a,b){
 
-function interpolate(a,b){
+
+let R=6371;
 
 
-let distance =
-Math.sqrt(
+let dLat =
+(b.lat-a.lat)
+*
+Math.PI/180;
 
-Math.pow(a.lat-b.lat,2)+
 
-Math.pow(a.lng-b.lng,2)
+let dLng =
+(b.lng-a.lng)
+*
+Math.PI/180;
 
+
+
+let x =
+Math.sin(dLat/2)**2
++
+Math.cos(a.lat*Math.PI/180)
+*
+Math.cos(b.lat*Math.PI/180)
+*
+Math.sin(dLng/2)**2;
+
+
+
+return R *
+2 *
+Math.atan2(
+Math.sqrt(x),
+Math.sqrt(1-x)
 );
 
-
-
-let steps =
-Math.min(
-20,
-Math.max(
-2,
-Math.floor(distance*500)
-)
-);
-
-
-
-let result=[];
-
-
-
-for(
-let i=1;
-i<=steps;
-i++
-){
-
-
-let t=i/steps;
-
-
-result.push({
-
-lat:
-a.lat+(b.lat-a.lat)*t,
-
-lng:
-a.lng+(b.lng-a.lng)*t
-
-});
-
-
-}
-
-
-
-return result;
 
 }
 
@@ -733,85 +607,163 @@ return result;
 
 
 
-
-function addPointToRoute(point){
-
-
-
-drawnPoints.push(point);
+function addToRoute(point){
 
 
 
-if(drawnPoints.length>1){
+if(!currentSegment.length){
+
+currentSegment.push(point);
+
+draw();
+
+return;
+
+}
 
 
-let previous =
-drawnPoints[
-drawnPoints.length-2
+
+let last =
+currentSegment[
+currentSegment.length-1
 ];
 
 
-let smooth =
-interpolate(
-previous,
+
+let km =
+distance(
+last,
 point
 );
 
 
 
-drawnPoints.push(
-...smooth
+let hours =
+(point.date-last.date)
+/3600000;
+
+
+
+/*
+new trip if:
+
+- more than 100km jump
+- more than 12 hour gap
+*/
+
+
+if(
+km>100 ||
+hours>12
+){
+
+
+routeSegments.push(
+currentSegment
 );
 
 
+currentSegment=[];
+
+
+}
+
+
+
+currentSegment.push(point);
+
+
+draw();
+
+
+}
+
+
+
+
+
+
+
+function draw(){
+
+
+
+let all =
+[
+...routeSegments,
+currentSegment
+];
+
+
+
+polylines.forEach(
+p=>map.removeLayer(p)
+);
+
+
+polylines=[];
+
+
+
+all.forEach(segment=>{
+
+
+if(segment.length<2){
+
+return;
 
 }
 
 
 
 let coords =
-drawnPoints.map(p=>[
-
+segment.map(
+p=>[
 p.lat,
-
 p.lng
-
-]);
-
-
-
-if(routeLine){
-
-map.removeLayer(routeLine);
-
-}
+]
+);
 
 
 
-routeLine =
+let line =
 L.polyline(
 coords,
 {
-
-color:"#e63946",
-
-weight:5,
-
-opacity:.85
-
+color:"#222",
+weight:5
 }
-
 )
 .addTo(map);
 
 
 
+polylines.push(line);
+
+
+
+});
+
+
+
+let bounds =
+L.featureGroup(
+polylines
+)
+.getBounds();
+
+
+
+if(bounds.isValid()){
+
 map.fitBounds(
-routeLine.getBounds(),
+bounds,
 {
 padding:[40,40]
 }
 );
+
+}
 
 
 
@@ -820,8 +772,6 @@ map.invalidateSize();
 
 
 }
-
-
 
 
 
