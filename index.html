@@ -1,1076 +1,722 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Liferoute</title>
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
-
 <style>
-
-*{
-    box-sizing:border-box;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+    margin: 0; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    overflow: hidden;
+    background: #000;
 }
 
-body{
-    margin:0;
-    font-family:system-ui,Arial,sans-serif;
+#panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 16px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 0 0 22px 22px;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.2);
 }
 
-
-#panel{
-
-    position:absolute;
-    top:0;
-    left:0;
-
-    width:100%;
-
-    padding:16px;
-
-    z-index:1000;
-
-    background:white;
-
-    border-radius:0 0 22px 22px;
-
-    box-shadow:0 4px 20px rgba(0,0,0,.15);
-
+h2 {
+    margin: 0 0 12px;
+    color: #111;
+    font-weight: 700;
 }
 
-
-
-h2{
-    margin:0 0 12px;
+button {
+    width: 100%;
+    padding: 16px;
+    border: 0;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #111;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
 }
 
-
-
-button{
-
-    width:100%;
-
-    padding:16px;
-
-    border:0;
-
-    border-radius:16px;
-
-    background:#FFD700;
-
-    color:#111;
-
-    font-size:18px;
-
-    font-weight:700;
-
-    transition:.3s;
-
+button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4); }
+button.active {
+    background: #111;
+    color: #FFD700;
+    transform: scale(0.96);
 }
 
-
-
-button.active{
-
-    background:#111;
-
-    color:#FFD700;
-
-    transform:scale(.96);
-
+#status {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #666;
 }
 
-
-
-#status{
-
-    margin-top:12px;
-
-    font-size:14px;
-
+#loader {
+    display: none;
+    width: 35px;
+    height: 35px;
+    margin: 15px auto;
+    border-radius: 50%;
+    border: 5px solid #eee;
+    border-top: 5px solid #111;
+    animation: spin 0.5s linear infinite;
 }
 
-
-
-#loader{
-
-    display:none;
-
-    width:35px;
-
-    height:35px;
-
-    margin:15px auto;
-
-    border-radius:50%;
-
-    border:5px solid #ddd;
-
-    border-top:5px solid #111;
-
-    animation:spin .5s linear infinite;
-
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
-
-
-@keyframes spin{
-
-    from{
-        transform:rotate(0deg);
-    }
-
-    to{
-        transform:rotate(360deg);
-    }
-
+#progressOuter {
+    display: none;
+    height: 10px;
+    background: #eee;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 10px;
 }
 
-
-
-#progressOuter{
-
-    display:none;
-
-    height:10px;
-
-    background:#ddd;
-
-    border-radius:10px;
-
-    overflow:hidden;
-
-    margin-top:10px;
-
+#progress {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #FFD700, #FFA500);
+    transition: width 0.2s ease;
 }
 
-
-
-#progress{
-
-    width:0%;
-
-    height:100%;
-
-    background:#111;
-
-    transition:.2s;
-
+#popup {
+    display: none;
+    position: absolute;
+    z-index: 2000;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    padding: 25px;
+    width: 80%;
+    max-width: 400px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
 
+#popupText { color: #111; }
 
-
-#popup{
-
-    display:none;
-
-    position:absolute;
-
-    z-index:2000;
-
-    top:50%;
-
-    left:50%;
-
-    transform:translate(-50%,-50%);
-
-    background:white;
-
-    padding:25px;
-
-    width:80%;
-
-    border-radius:20px;
-
-    text-align:center;
-
-    box-shadow:0 10px 30px rgba(0,0,0,.3);
-
+#map {
+    height: 100vh;
+    width: 100%;
 }
 
-
-
-#map{
-
-    height:100vh;
-
-    width:100%;
-
+#stats {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #666;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    display: none;
 }
 
+#clusterInfo {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #666;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    display: none;
+}
 
+.marker-cluster {
+    background: #FFD700;
+    border-radius: 50%;
+    color: #111;
+    font-weight: bold;
+    box-shadow: 0 0 0 5px rgba(255, 215, 0, 0.3);
+}
+
+.leaflet-control-attribution {
+    background: transparent;
+    color: #666;
+}
 </style>
-
 </head>
 
-
 <body>
-
-
 <div id="panel">
-
-
-<h2>Liferoute</h2>
-
-
-<input
-
-id="folder"
-
-type="file"
-
-accept="image/*"
-
-webkitdirectory
-
-directory
-
-multiple
-
-hidden
-
->
-
-
-<button id="button">
-
-Choose Photo Folder
-
-</button>
-
-
-
-<div id="status">
-
-Waiting for photos
-
+    <h2>Liferoute</h2>
+    <input id="folder" type="file" accept="image/*" webkitdirectory directory multiple hidden>
+    <button id="button">Choose Photo Folder</button>
+    <div id="status">Waiting for photos</div>
+    <div id="loader"></div>
+    <div id="progressOuter"><div id="progress"></div></div>
 </div>
-
-
-
-<div id="loader"></div>
-
-
-
-<div id="progressOuter">
-
-<div id="progress"></div>
-
-</div>
-
-
-</div>
-
-
 
 <div id="popup">
-
-<div id="popupText">
-
-Preparing
-
+    <div id="popupText">Preparing</div>
 </div>
 
-</div>
-
-
-
+<div id="stats"></div>
+<div id="clusterInfo"></div>
 <div id="map"></div>
 
-
-
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
 <script>
-
-
-const map =
-L.map("map")
-.setView([20,0],2);
-
-
-
-L.tileLayer(
-"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-{
-attribution:"\u00a9 OpenStreetMap"
-}
-)
-.addTo(map);
-
-
-
-
-const folder =
-document.getElementById("folder");
-
-
-const button =
-document.getElementById("button");
-
-
-const status =
-document.getElementById("status");
-
-
-const loader =
-document.getElementById("loader");
-
-
-const progress =
-document.getElementById("progress");
-
-
-const progressOuter =
-document.getElementById("progressOuter");
-
-
-const popup =
-document.getElementById("popup");
-
-
-const popupText =
-document.getElementById("popupText");
-
-
-
-let photos = [];
-
-let routeSegments = [];
-
-let lines = [];
-
-
-
-button.onclick = ()=>{
-
-    folder.click();
-
+// ============================================
+// CONFIGURATION
+// ============================================
+const CONFIG = {
+    MAX_FILES: 2000,
+    WORKER_COUNT: 4,
+    BATCH_SIZE: 10,
+    MAX_DISTANCE_KM: 100,
+    MAX_TIME_GAP_HOURS: 12,
+    ANIMATION_SPEED: 40,
+    CLUSTER_ZOOM: 14
 };
 
+// ============================================
+// STATE MANAGEMENT
+// ============================================
+const state = {
+    map: null,
+    markerCluster: null,
+    markers: [],
+    lines: [],
+    photos: [],
+    routeSegments: [],
+    bounds: null,
+    stats: { total: 0, withGPS: 0, processed: 0, time: 0 }
+};
 
+// ============================================
+// DOM ELEMENTS
+// ============================================
+const elements = {
+    folder: document.getElementById('folder'),
+    button: document.getElementById('button'),
+    status: document.getElementById('status'),
+    loader: document.getElementById('loader'),
+    progress: document.getElementById('progress'),
+    progressOuter: document.getElementById('progressOuter'),
+    popup: document.getElementById('popup'),
+    popupText: document.getElementById('popupText'),
+    stats: document.getElementById('stats'),
+    clusterInfo: document.getElementById('clusterInfo')
+};
 
+// ============================================
+// INITIALIZATION
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+    initMap();
+    initEventListeners();
+});
 
+function initMap() {
+    state.map = L.map('map', {
+        zoomControl: false,
+        doubleClickZoom: false,
+        gestureHandling: true
+    }).setView([20, 0], 2);
 
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19
+    }).addTo(state.map);
 
+    state.markerCluster = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        iconCreateFunction: createClusterIcon
+    });
 
-
-folder.addEventListener(
-"change",
-async(e)=>{
-
-
-resetMap();
-
-
-
-let files =
-[...e.target.files]
-.filter(
-f=>f.type.startsWith("image/")
-)
-.slice(0,1500);
-
-
-
-
-if(files.length===0){
-
-return;
-
+    // Add zoom controls back
+    L.control.zoom({ position: 'bottomright' }).addTo(state.map);
 }
 
-
-
-button.classList.add("active");
-
-button.innerText =
-"Scanning";
-
-
-
-loader.style.display="block";
-
-progressOuter.style.display="block";
-
-popup.style.display="block";
-
-
-
-setPopup(
-"Reading photos"
-);
-
-
-
-status.innerText =
-`0 / ${files.length}`;
-
-
-
-photos =
-await extractPhotos(files);
-
-
-
-if(photos.length===0){
-
-
-setPopup(
-"No GPS photos found"
-);
-
-
-status.innerText =
-"No locations found";
-
-
-finishButton();
-
-return;
-
-
+function createClusterIcon(cluster) {
+    return L.divIcon({
+        html: '<div class="marker-cluster">' + cluster.getChildCount() + '</div>',
+        className: 'marker-cluster-wrapper',
+        iconSize: L.point(40, 40)
+    });
 }
 
+function initEventListeners() {
+    elements.button.onclick = () => elements.folder.click();
 
+    elements.folder.addEventListener('change', async (e) => {
+        await processFiles(e.target.files);
+    });
 
-setPopup(
-"Building route"
-);
-
-
-
-status.innerText =
-"Sorting locations";
-
-
-
-photos.sort(
-(a,b)=>
-a.date-b.date
-);
-
-
-
-routeSegments =
-buildTrips(photos);
-
-
-
-drawRoutes();
-
-
-
-setPopup(
-"Complete"
-);
-
-
-
-status.innerText =
-`${photos.length} locations found`;
-
-
-
-setTimeout(()=>{
-
-popup.style.display="none";
-
-},1200);
-
-
-
-finishButton();
-
-
-
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') resetMap();
+    });
 }
 
-);
+// ============================================
+// CORE PROCESSING
+// ============================================
+async function processFiles(fileList) {
+    resetMap();
+    
+    const files = [...fileList]
+        .filter(f => f.type.startsWith('image/'))
+        .slice(0, CONFIG.MAX_FILES);
 
+    if (files.length === 0) return;
 
+    updateUI('loading', `Processing ${files.length} files...`);
+    state.stats = { total: files.length, withGPS: 0, processed: 0, time: Date.now() };
 
+    // Process in optimized batches
+    state.photos = await extractPhotosOptimized(files);
 
+    if (state.photos.length === 0) {
+        updateUI('error', 'No GPS data found in photos. Try photos taken with location enabled.');
+        return;
+    }
 
-
-
-
-
-async function extractPhotos(files){
-
-
-let results=[];
-
-let queue=[...files];
-
-
-let done=0;
-
-
-
-async function worker(){
-
-
-while(queue.length){
-
-
-let file =
-queue.shift();
-
-
-let data =
-await readPhoto(file);
-
-
-
-if(data){
-
-results.push(data);
-
+    updateUI('processing', 'Building route...');
+    
+    // Sort by date
+    state.photos.sort((a, b) => a.date - b.date);
+    
+    // Build trips
+    state.routeSegments = buildTrips(state.photos);
+    
+    // Draw everything
+    drawRoutes();
+    drawMarkers();
+    
+    // Fit map to bounds
+    fitMapToData();
+    
+    updateUI('complete', `${state.photos.length} locations found`);
+    updateStats();
 }
 
+// ============================================
+// OPTIMIZED PHOTO EXTRACTION
+// ============================================
+async function extractPhotosOptimized(files) {
+    const results = [];
+    const queue = [...files];
+    let done = 0;
+    let withGPS = 0;
 
+    // Create worker pool
+    const workers = [];
+    for (let i = 0; i < CONFIG.WORKER_COUNT; i++) {
+        workers.push(createWorker(queue, results, () => {
+            done++;
+            updateProgress(done, files.length);
+        }));
+    }
 
-done++;
-
-
-
-progress.style.width =
-(done/files.length*100)+"%";
-
-
-
-status.innerText =
-`Extracting ${done}/${files.length}`;
-
-
-
-if(done%5===0){
-
-await pause();
-
+    await Promise.all(workers);
+    return results;
 }
 
-
+function createWorker(queue, results, onComplete) {
+    return new Promise(async (resolve) => {
+        while (queue.length > 0) {
+            const file = queue.shift();
+            const data = await readPhotoOptimized(file);
+            if (data) {
+                results.push(data);
+            }
+            onComplete();
+            
+            // Yield to event loop periodically
+            if (queue.length % CONFIG.BATCH_SIZE === 0) {
+                await new Promise(r => setTimeout(r, 0));
+            }
+        }
+        resolve();
+    });
 }
 
-
-
+function updateProgress(done, total) {
+    const percent = Math.round((done / total) * 100);
+    elements.progress.style.width = `${percent}%`;
+    elements.status.textContent = `Processing ${done}/${total} (${percent}%)`;
 }
 
+// ============================================
+// ROBUST GPS EXTRACTION
+// ============================================
+async function readPhotoOptimized(file) {
+    try {
+        // Use pick to only parse what we need for speed
+        const exif = await exifr.parse(file, {
+            pick: [
+                'latitude', 'longitude',
+                'GPSLatitude', 'GPSLongitude',
+                'GPSLatitudeRef', 'GPSLongitudeRef',
+                'DateTimeOriginal', 'DateTime', 'CreateDate',
+                'Make', 'Model'
+            ]
+        });
 
+        if (!exif) return null;
 
+        // Try multiple GPS extraction methods
+        const coords = extractCoordinates(exif);
+        if (!coords) return null;
 
-await Promise.all([
+        // Extract date
+        const date = extractDate(exif, file);
 
-worker(),
-
-worker(),
-
-worker(),
-
-worker()
-
-]);
-
-
-
-return results;
-
-
+        return {
+            lat: coords.lat,
+            lng: coords.lng,
+            date: date,
+            fileName: file.name,
+            make: exif.Make,
+            model: exif.Model
+        };
+    } catch (e) {
+        console.warn(`Error reading ${file.name}:`, e);
+        return null;
+    }
 }
 
+function extractCoordinates(exif) {
+    // Method 1: Direct decimal coordinates (some libraries provide these)
+    if (exif.latitude !== undefined && exif.longitude !== undefined) {
+        const lat = parseFloat(exif.latitude);
+        const lng = parseFloat(exif.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            return { lat, lng };
+        }
+    }
 
+    // Method 2: Standard GPS tags in DMS format
+    if (exif.GPSLatitude && exif.GPSLongitude) {
+        const lat = convertDMSToDD(exif.GPSLatitude, exif.GPSLatitudeRef);
+        const lng = convertDMSToDD(exif.GPSLongitude, exif.GPSLongitudeRef);
+        if (lat !== null && lng !== null) {
+            return { lat, lng };
+        }
+    }
 
+    // Method 3: Check for GPS data in different formats
+    // Pixel 9 Pro and other modern devices might use these
+    if (exif.GPSInfo) {
+        if (exif.GPSInfo.GPSLatitude && exif.GPSInfo.GPSLongitude) {
+            const lat = convertDMSToDD(exif.GPSInfo.GPSLatitude, exif.GPSInfo.GPSLatitudeRef);
+            const lng = convertDMSToDD(exif.GPSInfo.GPSLongitude, exif.GPSInfo.GPSLongitudeRef);
+            if (lat !== null && lng !== null) {
+                return { lat, lng };
+            }
+        }
+    }
 
+    return null;
+}
 
-
-
-
-
-// Helper function to convert DMS (degrees, minutes, seconds) to decimal degrees
 function convertDMSToDD(dms, hemisphere) {
     if (!dms || dms.length < 3) return null;
+
+    try {
+        // Handle both rational {num, den} and decimal formats
+        const deg = typeof dms[0] === 'object' ? dms[0].num / dms[0].den : parseFloat(dms[0]);
+        const min = typeof dms[1] === 'object' ? dms[1].num / dms[1].den : parseFloat(dms[1]);
+        const sec = typeof dms[2] === 'object' ? dms[2].num / dms[2].den : parseFloat(dms[2]);
+
+        if (isNaN(deg) || isNaN(min) || isNaN(sec)) return null;
+
+        let dd = deg + (min / 60) + (sec / 3600);
+
+        // Adjust for hemisphere
+        if (hemisphere === 'S' || hemisphere === 'W') {
+            dd = -dd;
+        }
+
+        // Validate range
+        if (dd < -180 || dd > 180) return null;
+
+        return dd;
+    } catch (e) {
+        return null;
+    }
+}
+
+function extractDate(exif, file) {
+    // Try multiple date fields in order of preference
+    const dateFields = ['DateTimeOriginal', 'DateTime', 'CreateDate'];
     
-    // Handle both array format and rational format
-    const deg = typeof dms[0] === 'number' ? dms[0] : dms[0].num / dms[0].den;
-    const min = typeof dms[1] === 'number' ? dms[1] : dms[1].num / dms[1].den;
-    const sec = typeof dms[2] === 'number' ? dms[2] : dms[2].num / dms[2].den;
+    for (const field of dateFields) {
+        if (exif[field]) {
+            try {
+                // Handle different date formats
+                const date = new Date(exif[field]);
+                if (!isNaN(date.getTime())) {
+                    return date;
+                }
+            } catch (e) {
+                // Try parsing manually
+                const dateStr = String(exif[field]);
+                // Format: YYYY:MM:DD HH:MM:SS
+                const parts = dateStr.split(/[:\s]/);
+                if (parts.length >= 6) {
+                    const year = parseInt(parts[0]);
+                    const month = parseInt(parts[1]) - 1;
+                    const day = parseInt(parts[2]);
+                    const hour = parseInt(parts[3]);
+                    const minute = parseInt(parts[4]);
+                    const second = parseInt(parts[5]);
+                    return new Date(year, month, day, hour, minute, second);
+                }
+            }
+        }
+    }
+
+    // Fallback to file modification date
+    return new Date(file.lastModified);
+}
+
+// ============================================
+// TRIP BUILDING
+// ============================================
+function buildTrips(points) {
+    const trips = [];
+    let current = [];
+
+    for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+
+        if (current.length === 0) {
+            current.push(point);
+            continue;
+        }
+
+        const previous = current[current.length - 1];
+        const km = haversineDistance(previous, point);
+        const hours = (point.date - previous.date) / 3600000;
+
+        // Split into new trip if too far apart in distance or time
+        if (km > CONFIG.MAX_DISTANCE_KM || hours > CONFIG.MAX_TIME_GAP_HOURS) {
+            trips.push(current);
+            current = [];
+        }
+
+        current.push(point);
+    }
+
+    if (current.length > 0) {
+        trips.push(current);
+    }
+
+    return trips;
+}
+
+// ============================================
+// GEO CALCULATIONS
+// ============================================
+function haversineDistance(a, b) {
+    const R = 6371; // Earth radius in km
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
     
-    let dd = deg + (min / 60) + (sec / 3600);
+    const lat1 = a.lat * Math.PI / 180;
+    const lat2 = b.lat * Math.PI / 180;
+
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+
+    const x = sinDLat * sinDLat + 
+              Math.cos(lat1) * Math.cos(lat2) * 
+              sinDLng * sinDLng;
     
-    // Adjust sign based on hemisphere
-    if (hemisphere === 'S' || hemisphere === 'W') {
-        dd = -dd;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+// ============================================
+// RENDERING
+// ============================================
+function drawRoutes() {
+    // Clear existing lines
+    state.lines.forEach(line => state.map.removeLayer(line));
+    state.lines = [];
+
+    state.routeSegments.forEach(segment => {
+        if (segment.length < 2) return;
+
+        const coords = segment.map(p => [p.lat, p.lng]);
+        
+        const line = L.polyline([], {
+            color: '#FFD700',
+            weight: 4,
+            opacity: 0.8,
+            lineCap: 'round',
+            lineJoin: 'round'
+        }).addTo(state.map);
+
+        state.lines.push(line);
+        animateLine(line, coords);
+    });
+}
+
+function animateLine(line, coords) {
+    let index = 0;
+    const current = [];
+
+    function step() {
+        if (index >= coords.length) return;
+        current.push(coords[index]);
+        line.setLatLngs(current);
+        index++;
+        setTimeout(step, CONFIG.ANIMATION_SPEED);
+    }
+
+    step();
+}
+
+function drawMarkers() {
+    // Clear existing markers
+    state.markerCluster.clearLayers();
+    state.markers = [];
+
+    state.photos.forEach(photo => {
+        const marker = L.circleMarker([photo.lat, photo.lng], {
+            radius: 4,
+            fillColor: '#FFD700',
+            color: '#FFA500',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+        });
+        
+        state.markers.push(marker);
+        state.markerCluster.addLayer(marker);
+    });
+
+    state.map.addLayer(state.markerCluster);
+}
+
+function fitMapToData() {
+    if (state.photos.length === 0) return;
+
+    const bounds = L.latLngBounds(
+        state.photos.map(p => [p.lat, p.lng])
+    );
+
+    setTimeout(() => {
+        state.map.fitBounds(bounds, {
+            padding: [60, 60],
+            maxZoom: 16
+        });
+    }, 500);
+}
+
+// ============================================
+// UI UPDATES
+// ============================================
+function updateUI(state, message) {
+    switch (state) {
+        case 'loading':
+            elements.button.classList.add('active');
+            elements.button.innerText = 'Scanning...';
+            elements.loader.style.display = 'block';
+            elements.progressOuter.style.display = 'block';
+            elements.popup.style.display = 'block';
+            elements.popupText.textContent = message;
+            elements.status.textContent = message;
+            break;
+
+        case 'processing':
+            elements.popupText.textContent = message;
+            elements.status.textContent = message;
+            break;
+
+        case 'complete':
+            elements.popupText.textContent = message;
+            elements.status.textContent = message;
+            setTimeout(() => {
+                elements.popup.style.display = 'none';
+            }, 1500);
+            finishButton();
+            break;
+
+        case 'error':
+            elements.popupText.textContent = message;
+            elements.status.textContent = message;
+            finishButton();
+            break;
+    }
+}
+
+function updateStats() {
+    const elapsed = ((Date.now() - state.stats.time) / 1000).toFixed(1);
+    const avgTime = (elapsed / state.photos.length).toFixed(2);
+    
+    elements.stats.textContent = `${state.photos.length} locations | ${elapsed}s | ${avgTime}s/photo`;
+    elements.stats.style.display = 'block';
+    
+    elements.clusterInfo.textContent = `${state.routeSegments.length} trips`;
+    elements.clusterInfo.style.display = 'block';
+}
+
+function finishButton() {
+    elements.button.classList.remove('active');
+    elements.button.innerText = 'Choose Photo Folder';
+    elements.loader.style.display = 'none';
+    elements.progressOuter.style.display = 'none';
+    elements.progress.style.width = '0%';
+}
+
+// ============================================
+// CLEANUP
+// ============================================
+function resetMap() {
+    state.lines.forEach(line => state.map.removeLayer(line));
+    if (state.markerCluster) {
+        state.map.removeLayer(state.markerCluster);
+        state.markerCluster.clearLayers();
     }
     
-    return dd;
+    state.lines = [];
+    state.markers = [];
+    state.photos = [];
+    state.routeSegments = [];
+    state.bounds = null;
+    
+    elements.stats.style.display = 'none';
+    elements.clusterInfo.style.display = 'none';
 }
 
-
-
-
-async function readPhoto(file){
-
-
-
-try{
-
-// Parse all EXIF data (not just GPS) to see what's available
-let exif = await exifr.parse(file);
-
-
-// Check for GPS data in various formats
-let lat, lng, date;
-
-// Method 1: Check for already-converted decimal coordinates
-if (exif.latitude && exif.longitude) {
-    lat = exif.latitude;
-    lng = exif.longitude;
-} 
-// Method 2: Check for GPSLatitude/GPSLongitude arrays (DMS format)
-else if (exif.GPSLatitude && exif.GPSLongitude) {
-    lat = convertDMSToDD(exif.GPSLatitude, exif.GPSLatitudeRef);
-    lng = convertDMSToDD(exif.GPSLongitude, exif.GPSLongitudeRef);
+// ============================================
+// UTILITY
+// ============================================
+function pause() {
+    return new Promise(resolve => setTimeout(resolve, 0));
 }
-// Method 3: Check for nested GPS info
-else if (exif.GPSInfo && exif.GPSInfo.GPSLatitude && exif.GPSInfo.GPSLongitude) {
-    lat = convertDMSToDD(exif.GPSInfo.GPSLatitude, exif.GPSInfo.GPSLatitudeRef);
-    lng = convertDMSToDD(exif.GPSInfo.GPSLongitude, exif.GPSInfo.GPSLongitudeRef);
-}
-else {
-    // No GPS data found
-    return null;
-}
-
-
-// Validate coordinates
-if(lat === null || lng === null || isNaN(lat) || isNaN(lng)){
-    return null;
-}
-
-
-// Get date from various possible fields
-if (exif.DateTimeOriginal) {
-    date = new Date(exif.DateTimeOriginal);
-} else if (exif.DateTime) {
-    date = new Date(exif.DateTime);
-} else if (exif.CreateDate) {
-    date = new Date(exif.CreateDate);
-} else {
-    date = new Date(file.lastModified);
-}
-
-
-return {
-    lat: Number(lat),
-    lng: Number(lng),
-    date: date
-};
-
-
-
-}
-
-catch(e){
-
-return null;
-
-}
-
-
-}
-
-
-
-
-
-
-
-
-function buildTrips(points){
-
-
-let trips=[];
-
-let current=[];
-
-
-
-for(let i=0;i<points.length;i++){
-
-
-
-let point =
-points[i];
-
-
-
-if(current.length===0){
-
-
-current.push(point);
-
-continue;
-
-
-}
-
-
-
-let previous =
-current[current.length-1];
-
-
-
-let km =
-distance(
-previous,
-point
-);
-
-
-
-let hours =
-(point.date-previous.date)
-/3600000;
-
-
-
-if(
-km>100 ||
-hours>12
-){
-
-
-
-trips.push(current);
-
-current=[];
-
-
-
-}
-
-
-
-current.push(point);
-
-
-
-}
-
-
-
-if(current.length){
-
-trips.push(current);
-
-}
-
-
-
-return trips;
-
-
-}
-
-
-
-
-
-
-
-function distance(a,b){
-
-
-let R=6371;
-
-
-let dLat =
-(b.lat-a.lat)
-*
-Math.PI/180;
-
-
-let dLng =
-(b.lng-a.lng)
-*
-Math.PI/180;
-
-
-
-let x =
-Math.sin(dLat/2)**2+
-
-Math.cos(
-a.lat*Math.PI/180
-)
-*
-Math.cos(
-b.lat*Math.PI/180
-)
-*
-Math.sin(dLng/2)**2;
-
-
-
-return R *
-2 *
-Math.atan2(
-Math.sqrt(x),
-Math.sqrt(1-x)
-);
-
-
-}
-function drawRoutes(){
-
-
-lines.forEach(
-line=>map.removeLayer(line)
-);
-
-
-lines=[];
-
-
-
-let allPoints=[];
-
-
-
-routeSegments.forEach(
-segment=>{
-
-
-segment.forEach(
-p=>allPoints.push(p)
-);
-
-
-
-let coords =
-segment.map(
-p=>[
-p.lat,
-p.lng
-]
-);
-
-
-
-if(coords.length>1){
-
-
-
-let line =
-L.polyline(
-[],
-{
-color:"#111",
-weight:5,
-opacity:.85
-}
-)
-.addTo(map);
-
-
-
-lines.push(line);
-
-
-
-animateLine(
-line,
-coords
-);
-
-
-
-}
-
-
-
-}
-
-);
-
-
-
-setTimeout(()=>{
-
-
-let group =
-L.featureGroup(lines);
-
-
-
-if(group.getBounds().isValid()){
-
-map.fitBounds(
-group.getBounds(),
-{
-padding:[40,40]
-}
-);
-
-}
-
-
-
-},1000);
-
-
-
-}
-
-
-
-
-
-
-
-function animateLine(line,coords){
-
-
-let index=0;
-
-let current=[];
-
-
-
-function step(){
-
-
-if(index>=coords.length){
-
-return;
-
-}
-
-
-
-current.push(
-coords[index]
-);
-
-
-
-line.setLatLngs(
-current
-);
-
-
-
-index++;
-
-
-
-setTimeout(
-step,
-40
-);
-
-
-
-}
-
-
-
-step();
-
-
-
-}
-
-
-
-
-
-
-
-
-function resetMap(){
-
-
-
-lines.forEach(
-line=>map.removeLayer(line)
-);
-
-
-
-lines=[];
-
-photos=[];
-
-routeSegments=[];
-
-
-
-}
-
-
-
-function setPopup(text){
-
-
-popupText.innerText=text;
-
-popup.style.display="block";
-
-
-}
-
-
-
-function finishButton(){
-
-
-
-button.classList.remove(
-"active"
-);
-
-
-button.innerText =
-"Choose Photo Folder";
-
-
-loader.style.display="none";
-
-
-progressOuter.style.display="none";
-
-
-
-}
-
-
-
-function pause(){
-
-
-return new Promise(
-resolve=>
-setTimeout(resolve,0)
-);
-
-
-}
-
-
-
-
 </script>
-
-
 </body>
-
 </html>
