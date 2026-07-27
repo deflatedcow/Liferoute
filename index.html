@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Life Root</title>
+<title>Liferoute</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
@@ -214,7 +214,7 @@ button.active{
 <div id="panel">
 
 
-<h2>Life Root</h2>
+<h2>Liferoute</h2>
 
 
 <input
@@ -298,10 +298,11 @@ L.map("map")
 L.tileLayer(
 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
 {
-attribution:"© OpenStreetMap"
+attribution:"\u00a9 OpenStreetMap"
 }
 )
 .addTo(map);
+
 
 
 
@@ -358,6 +359,7 @@ button.onclick = ()=>{
 
 
 
+
 folder.addEventListener(
 "change",
 async(e)=>{
@@ -373,6 +375,7 @@ let files =
 f=>f.type.startsWith("image/")
 )
 .slice(0,1500);
+
 
 
 
@@ -497,8 +500,6 @@ finishButton();
 
 
 
-
-
 async function extractPhotos(files){
 
 
@@ -558,6 +559,7 @@ await pause();
 }
 
 
+
 }
 
 
@@ -589,6 +591,27 @@ return results;
 
 
 
+// Helper function to convert DMS (degrees, minutes, seconds) to decimal degrees
+function convertDMSToDD(dms, hemisphere) {
+    if (!dms || dms.length < 3) return null;
+    
+    // Convert rational numbers to floats
+    const deg = dms[0].num / dms[0].den;
+    const min = dms[1].num / dms[1].den;
+    const sec = dms[2].num / dms[2].den;
+    
+    let dd = deg + (min / 60) + (sec / 3600);
+    
+    // Adjust sign based on hemisphere
+    if (hemisphere === 'S' || hemisphere === 'W') {
+        dd = -dd;
+    }
+    
+    return dd;
+}
+
+
+
 
 async function readPhoto(file){
 
@@ -596,55 +619,37 @@ async function readPhoto(file){
 
 try{
 
+// Use exifr.parse to get all GPS tags
+let exif = await exifr.parse(file, {
+    pick: ['GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef', 'DateTimeOriginal']
+});
 
-let gps =
-await exifr.gps(file);
 
-
-
-if(
-!gps ||
-gps.latitude===undefined
-){
-
-return null;
-
+if(!exif || !exif.GPSLatitude || !exif.GPSLongitude){
+    return null;
 }
 
 
-
-let meta =
-await exifr.parse(
-file,
-[
-"DateTimeOriginal"
-]
-);
+// Convert DMS to decimal degrees
+let lat = convertDMSToDD(exif.GPSLatitude, exif.GPSLatitudeRef);
+let lng = convertDMSToDD(exif.GPSLongitude, exif.GPSLongitudeRef);
 
 
+if(lat === null || lng === null || isNaN(lat) || isNaN(lng)){
+    return null;
+}
 
-let date =
-meta &&
-meta.DateTimeOriginal
 
-?
-
-new Date(meta.DateTimeOriginal)
-
-:
-
-new Date(file.lastModified);
-
+// Get date from DateTimeOriginal or fall back to file modification date
+let date = exif.DateTimeOriginal 
+    ? new Date(exif.DateTimeOriginal)
+    : new Date(file.lastModified);
 
 
 return {
-
-lat:Number(gps.latitude),
-
-lng:Number(gps.longitude),
-
-date:date
-
+    lat: Number(lat),
+    lng: Number(lng),
+    date: date
 };
 
 
@@ -912,7 +917,6 @@ padding:[40,40]
 
 
 
-
 function animateLine(line,coords){
 
 
@@ -965,7 +969,6 @@ step();
 
 
 }
-
 
 
 
