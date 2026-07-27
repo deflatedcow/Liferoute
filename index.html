@@ -341,9 +341,9 @@ document.getElementById("popupText");
 let photos = [];
 
 let routeSegments = [];
-let markers = [];
 
 let lines = [];
+let markers = [];
 
 
 
@@ -884,14 +884,14 @@ setTimeout(()=>{
 
 
 let group =
-L.featureGroup(lines);
+L.latLngBounds(photos.map(p=>[p.lat,p.lng]));
 
 
 
-if(group.getBounds().isValid()){
+if(L.latLngBounds(photos.map(p=>[p.lat,p.lng])).isValid()){
 
 map.fitBounds(
-group.getBounds(),
+L.latLngBounds(photos.map(p=>[p.lat,p.lng])),
 {
 padding:[40,40]
 }
@@ -903,7 +903,6 @@ padding:[40,40]
 
 },1000);
 
-\nlet markers = [];
 \nfunction drawMarkers(){\n\n  markers.forEach(m=>map.removeLayer(m));\n  markers=[];\n\n  photos.forEach(p=>{\n\n    let marker=L.circleMarker([p.lat,p.lng],{\n\n      radius:6,\n\n      fillColor:"#FFD700",\n\n      color:"#000",\n\n      weight:1,\n\n      opacity:1,\n\n      fillOpacity:0.8\n\n    });\n\n    markers.push(marker);\n    marker.addTo(map);\n\n  });\n\n}
 
 
