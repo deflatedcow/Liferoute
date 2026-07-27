@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -9,217 +11,642 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
 <style>
+
 * {
     box-sizing:border-box;
 }
 
 body {
     margin:0;
-    font-family:system-ui, sans-serif;
-    background:#000;
+    font-family:system-ui, Arial, sans-serif;
 }
+
 
 #top {
+
     position:absolute;
     z-index:1000;
+
     top:0;
     width:100%;
-    padding:15px;
+
+    padding:16px;
+
     background:white;
-    border-radius:0 0 20px 20px;
+
+    border-radius:0 0 22px 22px;
+
+    box-shadow:0 3px 15px rgba(0,0,0,.2);
+
 }
+
 
 h2 {
-    margin:0 0 10px;
+
+    margin:0 0 12px;
+
 }
+
+
 
 button {
+
     width:100%;
-    padding:15px;
+
+    padding:16px;
+
     border:0;
-    border-radius:12px;
+
+    border-radius:14px;
+
     background:#111;
+
     color:white;
+
     font-size:18px;
+
 }
+
+
 
 #status {
-    margin-top:10px;
+
+    margin-top:12px;
+
     font-size:14px;
+
 }
 
-#map {
-    height:100vh;
-    width:100%;
+
+
+.loader {
+
+    display:none;
+
+    width:38px;
+
+    height:38px;
+
+    margin:15px auto;
+
+    border-radius:50%;
+
+    border:5px solid #ddd;
+
+    border-top:5px solid #111;
+
+    animation:spin .35s linear infinite;
+
 }
+
+
+
+@keyframes spin {
+
+    from {
+        transform:rotate(0deg);
+    }
+
+    to {
+        transform:rotate(360deg);
+    }
+
+}
+
+
+
+.progress-container {
+
+    display:none;
+
+    height:10px;
+
+    width:100%;
+
+    background:#ddd;
+
+    border-radius:20px;
+
+    overflow:hidden;
+
+}
+
+
+
+.progress-bar {
+
+    width:0%;
+
+    height:100%;
+
+    background:#111;
+
+    transition:.2s;
+
+}
+
+
+
+#map {
+
+    width:100%;
+
+    height:100vh;
+
+}
+
+
 </style>
 
 </head>
 
+
 <body>
+
 
 <div id="top">
 
+
 <h2>🌍 Life Route</h2>
 
-<input 
+
+<input
 id="photos"
 type="file"
 accept="image/*"
 webkitdirectory
+directory
 multiple
-hidden>
+hidden
+>
+
 
 <button onclick="photos.click()">
 Choose Photo Folder
 </button>
 
+
+
 <div id="status">
 Waiting for photos...
 </div>
 
+
+
+<div id="loader" class="loader"></div>
+
+
+
+<div id="progress-container" class="progress-container">
+
+<div id="progress-bar" class="progress-bar"></div>
+
 </div>
+
+
+</div>
+
 
 
 <div id="map"></div>
 
 
+
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+
+
 
 
 <script>
 
-const map=L.map("map").setView([20,0],2);
+
+const map = L.map("map")
+.setView([20,0],2);
+
 
 
 L.tileLayer(
-"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+{
+
+attribution:
+"© OpenStreetMap"
+
+}
 ).addTo(map);
+
 
 
 let points=[];
 
 
-const status=document.getElementById("status");
+
+const status =
+document.getElementById("status");
 
 
-photos.addEventListener("change", async e=>{
-
-    points=[];
-
-    const files=[
-        ...e.target.files
-    ].filter(
-        f=>f.type.startsWith("image/")
-    );
+const loader =
+document.getElementById("loader");
 
 
-    status.innerText=
-    `Found ${files.length} photos`;
+const progressContainer =
+document.getElementById("progress-container");
 
 
-    const limit=Math.min(
-        files.length,
-        1000
-    );
+const progressBar =
+document.getElementById("progress-bar");
 
 
-    for(
-        let i=0;
-        i<limit;
-        i++
-    ){
 
-        try {
-
-            const data=
-            await exifr.gps(files[i]);
+const cache = new Map();
 
 
-            if(data){
-
-                points.push({
-
-                    lat:data.latitude,
-                    lng:data.longitude,
-
-                    date:
-                    files[i].lastModified
-
-                });
-
-            }
-
-        }
-        catch(err){
-
-        }
 
 
-        if(i%25===0){
-
-            status.innerText=
-            `Scanning ${i}/${limit}...`;
-
-            await new Promise(
-                r=>setTimeout(r,0)
-            );
-
-        }
-
-    }
+photos.addEventListener(
+"change",
+async function(e){
 
 
-    status.innerText=
-    `${points.length} locations found`;
+
+points=[];
 
 
-    draw();
+
+let files =
+[...e.target.files]
+.filter(file =>
+
+file.type.startsWith("image/")
+
+);
+
+
+
+const limit =
+Math.min(files.length,1000);
+
+
+
+files =
+files.slice(0,limit);
+
+
+
+if(files.length===0){
+
+alert("No photos found");
+
+return;
+
+}
+
+
+
+loader.style.display="block";
+
+progressContainer.style.display="block";
+
+progressBar.style.width="0%";
+
+
+
+status.innerText =
+`Preparing ${limit} photos...`;
+
+
+
+let queue=[...files];
+
+let completed=0;
+
+
+
+async function worker(){
+
+
+
+while(queue.length){
+
+
+
+const file =
+queue.shift();
+
+
+
+try {
+
+
+
+const result =
+await scanPhoto(file);
+
+
+
+if(result){
+
+points.push(result);
+
+}
+
+
+
+}
+
+catch(err){
+
+console.log(
+"Skipped:",
+file.name
+);
+
+}
+
+
+
+completed++;
+
+
+
+if(completed % 5 === 0){
+
+
+
+const percent =
+(completed / limit) * 100;
+
+
+
+progressBar.style.width =
+percent+"%";
+
+
+
+status.innerText =
+`Scanning ${completed}/${limit} photos`;
+
+
+
+await new Promise(
+r=>setTimeout(r,0)
+);
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+
+await Promise.all([
+
+worker(),
+
+worker(),
+
+worker(),
+
+worker()
+
+]);
+
+
+
+
+
+points.sort(
+
+(a,b)=>
+
+new Date(a.date)
+-
+new Date(b.date)
+
+);
+
+
+
+loader.style.display="none";
+
+progressContainer.style.display="none";
+
+
+
+status.innerText =
+`${points.length} locations found`;
+
+
+
+console.log(points.slice(0,5));
+
+
+
+drawRoute();
+
+
+
+}
+
+);
+
+
+
+
+
+
+async function scanPhoto(file){
+
+
+
+if(cache.has(file.name)){
+
+return cache.get(file.name);
+
+}
+
+
+
+const gps =
+await exifr.gps(file);
+
+
+
+if(
+!gps ||
+gps.latitude===undefined ||
+gps.longitude===undefined
+){
+
+return null;
+
+}
+
+
+
+const result={
+
+
+lat:Number(gps.latitude),
+
+
+lng:Number(gps.longitude),
+
+
+date:file.lastModified
+
+
+};
+
+
+
+cache.set(
+file.name,
+result
+);
+
+
+
+return result;
+
+
+
+}
+
+
+
+
+
+
+
+function drawRoute(){
+
+
+
+map.eachLayer(layer=>{
+
+
+if(
+
+layer instanceof L.Polyline ||
+
+layer instanceof L.Marker
+
+){
+
+map.removeLayer(layer);
+
+}
+
 
 });
 
 
 
-function draw(){
 
-    let coords=[];
+const coords =
+points.map(p=>[
 
+p.lat,
 
-    points.forEach(p=>{
+p.lng
 
-        coords.push([
-            p.lat,
-            p.lng
-        ]);
-
-    });
+]);
 
 
-    if(coords.length){
-
-        L.polyline(
-            coords,
-            {
-                weight:4
-            }
-        ).addTo(map);
 
 
-        map.fitBounds(coords);
+if(coords.length===0){
 
-    }
-    else{
+alert(
+"No GPS data found"
+);
 
-        alert(
-        "No GPS photos found"
-        );
-
-    }
+return;
 
 }
 
+
+
+
+const route =
+L.polyline(
+coords,
+{
+
+color:"blue",
+
+weight:5,
+
+opacity:.8
+
+}
+
+)
+.addTo(map);
+
+
+
+
+
+L.marker(coords[0])
+
+.addTo(map)
+
+.bindPopup(
+"🚀 Start"
+);
+
+
+
+
+
+L.marker(
+coords[coords.length-1]
+)
+
+.addTo(map)
+
+.bindPopup(
+"🏁 Latest"
+);
+
+
+
+
+
+map.fitBounds(
+
+route.getBounds(),
+
+{
+
+padding:[40,40]
+
+}
+
+);
+
+
+
+}
+
+
+
 </script>
 
+
 </body>
+
 </html>
