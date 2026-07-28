@@ -19,7 +19,7 @@ width:100%;padding:16px;border:0;border-radius:16px;
 background:#FFD700;font-weight:700;font-size:18px
 }
 button.active{background:#111;color:#FFD700;transform:scale(.96)}
-#status{margin-top:10px;font-size:14px}
+#status{margin-top:10px;font-size:14px;white-space:pre-wrap}
 #loader{
 display:none;width:30px;height:30px;margin:10px auto;
 border-radius:50%;border:4px solid #ddd;border-top:4px solid #111;
@@ -71,6 +71,9 @@ const progressOuter = document.getElementById("progressOuter")
 let routePoints = []
 let lines = []
 
+// how long to wait on a single file before giving up on it
+const FILE_TIMEOUT_MS = 8000
+
 button.onclick = ()=>folder.click()
 
 folder.addEventListener("change", handleFiles)
@@ -89,12 +92,16 @@ button.classList.add("active")
 button.innerText="Scanning"
 loader.style.display="block"
 progressOuter.style.display="block"
+status.innerText=`Scanning 0/${files.length}`
+
+// wrap the whole pipeline so a single failure can never leave the UI
+// stuck silently on "Scanning" forever
+try{
 
 routePoints = await extract(files)
 
 if(!routePoints.length){
 status.innerText="No GPS data found"
-finish()
 return
 }
 
@@ -105,13 +112,20 @@ status.innerText="Drawing"
 await drawRoute()
 
 status.innerText=`${routePoints.length} locations`
+
+}catch(err){
+console.error("Life Root failed:",err)
+status.innerText="Something went wrong — see console (F12) for details"
+}finally{
 finish()
+}
 
 }
 
 async function extract(files){
 
 let results=[]
+let failed=0
 let done=0
 
 async function worker(list){
@@ -120,10 +134,11 @@ for(let file of list){
 
 let data = await readPhoto(file)
 if(data)results.push(data)
+else failed++
 
 done++
 progress.style.width=(done/files.length*100)+"%"
-status.innerText=`Scanning ${done}/${files.length}`
+status.innerText=`Scanning ${done}/${files.length}`+(failed?` (${failed} skipped)`:"")
 
 if(done%5===0){
 await new Promise(r=>setTimeout(r,0))
@@ -132,7 +147,7 @@ await new Promise(r=>setTimeout(r,0))
 }
 }
 
-let chunkSize=Math.ceil(files.length/4)
+let chunkSize=Math.max(1,Math.ceil(files.length/4))
 await Promise.all([
 worker(files.slice(0,chunkSize)),
 worker(files.slice(chunkSize,chunkSize*2)),
@@ -148,7 +163,25 @@ async function readPhoto(file){
 
 try{
 
-let data = await exifr.parse(file,{gps:true})
+// race the parse against a timeout so one malformed file
+// can never stall a whole worker (and therefore the whole batch)
+let data = await Promise.race([
+exifr.parse(file,{
+tiff:true,
+ifd0:true,
+exif:true,
+gps:true,
+interop:false,
+thumbnail:false,
+xmp:false,
+icc:false,
+iptc:false,
+mergeOutput:true
+}),
+new Promise((_,reject)=>
+setTimeout(()=>reject(new Error("timeout")),FILE_TIMEOUT_MS)
+)
+])
 
 if(!data || data.latitude===undefined)return null
 
@@ -160,7 +193,8 @@ date:data.DateTimeOriginal
 : new Date(file.lastModified)
 }
 
-}catch{
+}catch(err){
+console.warn("Skipped",file.name,err && err.message)
 return null
 }
 
@@ -184,7 +218,9 @@ lines.push(line)
 let i=0
 let batch=25
 
-async function step(){
+await new Promise((resolve)=>{
+
+function step(){
 
 let slice = coords.slice(i,i+batch)
 
@@ -194,18 +230,20 @@ i+=batch
 
 if(i<coords.length){
 
-await new Promise(r=>setTimeout(r,0))
-requestAnimationFrame(step)
+setTimeout(()=>requestAnimationFrame(step),0)
 
 }else{
 
 map.fitBounds(coords,{padding:[40,40]})
+resolve()
 
 }
 
 }
 
 step()
+
+})
 
 }
 
