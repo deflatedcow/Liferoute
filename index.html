@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#FFFFFF">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Liferoute</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 <style>
@@ -33,7 +31,6 @@ html, body {
     border-radius: 0 0 22px 22px;
     box-shadow: 0 4px 30px rgba(0,0,0,0.1);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
 }
 
 #panel h2 {
@@ -63,15 +60,8 @@ button {
     touch-action: manipulation;
 }
 
-button:active {
-    transform: scale(0.96);
-    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.2);
-}
-
-button.active {
-    background: #111;
-    color: #FFD700;
-}
+button:active { transform: scale(0.96); }
+button.active { background: #111; color: #FFD700; }
 
 #loader {
     display: none;
@@ -84,10 +74,7 @@ button.active {
     animation: spin 0.5s linear infinite;
 }
 
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 #progressOuter {
     display: none;
@@ -98,12 +85,7 @@ button.active {
     margin-top: 10px;
 }
 
-#progress {
-    width: 0%;
-    height: 100%;
-    background: linear-gradient(90deg, #FFD700, #FFA500);
-    transition: width 0.2s ease;
-}
+#progress { width: 0%; height: 100%; background: linear-gradient(90deg, #FFD700, #FFA500); transition: width 0.2s; }
 
 #popup {
     display: none;
@@ -123,57 +105,21 @@ button.active {
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
 
-#popupText {
-    font-size: 16px;
-}
+#popupText { font-size: 16px; }
 
-#map {
-    height: 100vh;
-    width: 100%;
-}
+#map { height: 100vh; width: 100%; }
 
-/* Mobile-specific fixes */
 @media (max-width: 768px) {
-    #panel h2 {
-        font-size: 20px;
-    }
-    button {
-        font-size: 16px;
-        padding: 14px 20px;
-    }
+    #panel h2 { font-size: 20px; }
+    button { font-size: 16px; padding: 14px 20px; }
 }
 
-/* Prevent overscroll bounce on iOS */
-html, body {
-    overscroll-behavior: none;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Leaflet mobile fixes */
-.leaflet-container {
-    -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
-}
-
-.leaflet-control-attribution {
-    background: transparent;
-    color: rgba(0, 0, 0, 0.5);
-    font-size: 11px;
-}
-
-.leaflet-control-zoom {
-    border: none;
-    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
-}
-
-.leaflet-control-zoom a {
-    background: rgba(255, 255, 255, 0.9);
-    color: #111;
-    border: none;
-}
-
-.leaflet-control-zoom a:hover {
-    background: #FFD700;
-}
+html, body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+.leaflet-container { -webkit-tap-highlight-color: rgba(255, 255, 255, 0); }
+.leaflet-control-attribution { background: transparent; color: rgba(0, 0, 0, 0.5); font-size: 11px; }
+.leaflet-control-zoom { border: none; box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }
+.leaflet-control-zoom a { background: rgba(255, 255, 255, 0.9); color: #111; border: none; }
+.leaflet-control-zoom a:hover { background: #FFD700; }
 </style>
 </head>
 
@@ -197,11 +143,13 @@ html, body {
 <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
 <script>
 // ============================================
-// CONFIG - Mobile Optimized
+// CONFIG
 // ============================================
 const CONFIG = {
     MAX_FILES: 2000,
-    WORKER_COUNT: 8,
+    DEDUP_DISTANCE_MILES: 30,  // Deduplicate points within 30 miles
+    MAX_WORKERS: 8,
+    MIN_WORKERS: 2,
     BATCH_SIZE: 50
 };
 
@@ -212,19 +160,16 @@ let map;
 let routePoints = [];
 let markers = [];
 let lines = [];
-let statusEl;
-let folderInput;
-let button;
-let loader;
-let progress;
-let progressOuter;
-let popup;
-let popupText;
+let statusEl, folderInput, button, loader, progress, progressOuter, popup, popupText;
+let deviceTier = 'low';  // Will be detected
 
 // ============================================
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Detect device capability
+    detectDeviceTier();
+    
     map = L.map('map', {
         zoomControl: false,
         doubleClickZoom: false,
@@ -239,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Cache DOM
     statusEl = document.getElementById('status');
     folderInput = document.getElementById('folder');
     button = document.getElementById('button');
@@ -255,6 +201,41 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.touches.length > 1) e.preventDefault();
     }, { passive: false });
 });
+
+// ============================================
+// DEVICE DETECTION
+// ============================================
+function detectDeviceTier() {
+    // Check number of CPU cores
+    const cores = navigator.hardwareConcurrency || 2;
+    
+    // Check memory
+    const memory = navigator.deviceMemory || 2;
+    
+    // Check if mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Assign tier
+    if (cores >= 6 && memory >= 6 && !isMobile) {
+        deviceTier = 'high';
+    } else if (cores >= 4 && memory >= 4) {
+        deviceTier = 'medium';
+    } else {
+        deviceTier = 'low';
+    }
+    
+    console.log(`Device tier: ${deviceTier} (cores: ${cores}, memory: ${memory}GB, mobile: ${isMobile})`);
+}
+
+function getWorkerCount() {
+    // Custom worker count based on device tier
+    switch (deviceTier) {
+        case 'high': return Math.min(CONFIG.MAX_WORKERS, navigator.hardwareConcurrency || CONFIG.MAX_WORKERS);
+        case 'medium': return Math.min(4, navigator.hardwareConcurrency || 4);
+        case 'low': return CONFIG.MIN_WORKERS;
+        default: return 4;
+    }
+}
 
 // ============================================
 // FILE HANDLING
@@ -274,12 +255,25 @@ async function handleFiles(e) {
     updateStatus(`Found ${files.length} images, scanning...`);
     updateUI('loading');
 
-    routePoints = await processFilesInParallel(files);
+    const workerCount = getWorkerCount();
+    console.log(`Using ${workerCount} workers for processing`);
+    
+    routePoints = await processFilesInParallel(files, workerCount);
 
     if (routePoints.length === 0) {
         updateUI('error', 'No GPS data found. Ensure location was enabled when photos were taken.');
         return;
     }
+
+    // Deduplicate points within 30 miles
+    const deduplicatedPoints = deduplicatePoints(routePoints, CONFIG.DEDUP_DISTANCE_MILES);
+    const removed = routePoints.length - deduplicatedPoints.length;
+    
+    if (removed > 0) {
+        console.log(`Deduplicated ${removed} points within ${CONFIG.DEDUP_DISTANCE_MILES} miles`);
+    }
+    
+    routePoints = deduplicatedPoints;
 
     updateUI('processing', 'Sorting and drawing...');
     
@@ -291,17 +285,47 @@ async function handleFiles(e) {
 }
 
 // ============================================
+// DEDUPLICATION
+// ============================================
+function deduplicatePoints(points, maxDistanceMiles) {
+    if (points.length <= 1) return points;
+    
+    const uniquePoints = [points[0]];
+    const maxDistanceKm = maxDistanceMiles * 1.60934;  // Convert miles to km
+    
+    for (let i = 1; i < points.length; i++) {
+        const current = points[i];
+        let isDuplicate = false;
+        
+        // Check against all unique points so far
+        for (const unique of uniquePoints) {
+            const distanceKm = haversineDistance(current, unique);
+            if (distanceKm <= maxDistanceKm) {
+                isDuplicate = true;
+                break;
+            }
+        }
+        
+        if (!isDuplicate) {
+            uniquePoints.push(current);
+        }
+    }
+    
+    return uniquePoints;
+}
+
+// ============================================
 // PARALLEL PROCESSING
 // ============================================
-async function processFilesInParallel(files) {
+async function processFilesInParallel(files, workerCount) {
     const results = [];
     const total = files.length;
     let processed = 0;
 
     const workerPromises = [];
-    const chunkSize = Math.ceil(files.length / CONFIG.WORKER_COUNT);
+    const chunkSize = Math.ceil(files.length / workerCount);
 
-    for (let i = 0; i < CONFIG.WORKER_COUNT; i++) {
+    for (let i = 0; i < workerCount; i++) {
         const start = i * chunkSize;
         const end = Math.min(start + chunkSize, files.length);
         const chunk = files.slice(start, end);
@@ -342,17 +366,16 @@ async function processChunk(files, onProgress) {
 }
 
 // ============================================
-// GPS EXTRACTION - This is the key fix
+// GPS EXTRACTION
 // ============================================
 async function extractGPS(file) {
     try {
-        // Parse with gps:true to get latitude/longitude directly
+        // Method 1: Use gps:true for automatic conversion
         const data = await exifr.parse(file, {
             gps: true,
             DateTimeOriginal: true
         });
 
-        // Check if we got GPS data
         if (data && data.latitude !== undefined && data.longitude !== undefined) {
             return {
                 lat: parseFloat(data.latitude),
@@ -362,10 +385,9 @@ async function extractGPS(file) {
             };
         }
         
-        // If gps:true didn't work, try manual extraction
+        // Method 2: Manual DMS conversion
         const exif = await exifr.parse(file);
         
-        // Check for GPSLatitude/GPSLongitude (DMS format)
         if (exif && exif.GPSLatitude && exif.GPSLongitude) {
             const lat = convertDMS(exif.GPSLatitude, exif.GPSLatitudeRef);
             const lng = convertDMS(exif.GPSLongitude, exif.GPSLongitudeRef);
@@ -387,7 +409,6 @@ async function extractGPS(file) {
     }
 }
 
-// Convert DMS to decimal degrees
 function convertDMS(dms, hemisphere) {
     if (!dms || dms.length < 3) return null;
     
@@ -406,6 +427,19 @@ function convertDMS(dms, hemisphere) {
     } catch (e) {
         return null;
     }
+}
+
+// ============================================
+// DISTANCE CALCULATION
+// ============================================
+function haversineDistance(a, b) {
+    const R = 6371; // Earth radius in km
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLng = (b.lng - a.lng) * Math.PI / 180;
+    const lat1 = a.lat * Math.PI / 180;
+    const lat2 = b.lat * Math.PI / 180;
+    const x = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
 }
 
 // ============================================
