@@ -28,6 +28,15 @@ animation:spin .6s linear infinite
 @keyframes spin{to{transform:rotate(360deg)}}
 #progressOuter{display:none;height:8px;background:#ddd;border-radius:8px;margin-top:8px}
 #progress{height:100%;width:0;background:#111}
+#detailsToggle{
+display:none;margin-top:8px;background:none;border:1px solid #ccc;
+padding:8px;font-size:12px;font-weight:600;border-radius:8px;width:100%
+}
+#details{
+display:none;max-height:180px;overflow-y:auto;margin-top:8px;
+font-size:11px;font-family:monospace;background:#f5f5f5;
+border-radius:8px;padding:8px;white-space:pre-wrap
+}
 #map{height:100vh}
 </style>
 </head>
@@ -46,6 +55,9 @@ animation:spin .6s linear infinite
 <div id="progressOuter">
 <div id="progress"></div>
 </div>
+
+<button id="detailsToggle">Show details</button>
+<div id="details"></div>
 </div>
 
 <div id="map"></div>
@@ -67,20 +79,32 @@ const status = document.getElementById("status")
 const loader = document.getElementById("loader")
 const progress = document.getElementById("progress")
 const progressOuter = document.getElementById("progressOuter")
+const detailsToggle = document.getElementById("detailsToggle")
+const details = document.getElementById("details")
 
 let routePoints = []
 let lines = []
+let skipLog = []
 
-// how long to wait on a single file before giving up on it
-const FILE_TIMEOUT_MS = 8000
+const FILE_TIMEOUT_MS = 15000
 
 button.onclick = ()=>folder.click()
 
 folder.addEventListener("change", handleFiles)
 
+detailsToggle.onclick = ()=>{
+let open = details.style.display==="block"
+details.style.display = open ? "none" : "block"
+detailsToggle.innerText = open ? "Show details" : "Hide details"
+}
+
 async function handleFiles(e){
 
 resetMap()
+skipLog=[]
+details.innerText=""
+detailsToggle.style.display="none"
+details.style.display="none"
 
 let files=[...e.target.files]
 .filter(f=>f.type.startsWith("image/"))
@@ -94,14 +118,15 @@ loader.style.display="block"
 progressOuter.style.display="block"
 status.innerText=`Scanning 0/${files.length}`
 
-// wrap the whole pipeline so a single failure can never leave the UI
-// stuck silently on "Scanning" forever
 try{
 
-routePoints = await extract(files)
+let result = await extract(files)
+routePoints = result.points
+
+renderDetails(result)
 
 if(!routePoints.length){
-status.innerText="No GPS data found"
+status.innerText="No GPS data found in any photo"
 return
 }
 
@@ -111,34 +136,62 @@ routePoints.sort((a,b)=>a.date-b.date)
 status.innerText="Drawing"
 await drawRoute()
 
-status.innerText=`${routePoints.length} locations`
+status.innerText=`${routePoints.length} of ${files.length} photos plotted`
 
 }catch(err){
 console.error("Life Root failed:",err)
-status.innerText="Something went wrong — see console (F12) for details"
+status.innerText="Something went wrong: "+(err && err.message ? err.message : String(err))
+skipLog.push("FATAL ERROR: "+(err && err.stack ? err.stack : String(err)))
+renderDetails({noGps:0,timedOut:0,failed:0,unsupported:0})
 }finally{
 finish()
 }
 
 }
 
+function renderDetails(counts){
+let lines = []
+lines.push(`No GPS data: ${counts.noGps}`)
+lines.push(`Timed out: ${counts.timedOut}`)
+lines.push(`Unsupported format: ${counts.unsupported}`)
+lines.push(`Read errors: ${counts.failed}`)
+lines.push("")
+lines.push(...skipLog.slice(0,200))
+if(skipLog.length>200){
+lines.push(`... and ${skipLog.length-200} more`)
+}
+details.innerText = lines.join("\n")
+detailsToggle.style.display = "block"
+}
+
 async function extract(files){
 
 let results=[]
-let failed=0
 let done=0
+let noGps=0
+let timedOut=0
+let unsupported=0
+let failed=0
 
 async function worker(list){
 
 for(let file of list){
 
-let data = await readPhoto(file)
-if(data)results.push(data)
+let outcome = await readPhoto(file)
+
+if(outcome.ok){
+results.push(outcome.data)
+}else{
+if(outcome.reason==="noGps")noGps++
+else if(outcome.reason==="timeout")timedOut++
+else if(outcome.reason==="unsupported")unsupported++
 else failed++
+skipLog.push(`${file.name}: ${outcome.reason}${outcome.detail ? " - "+outcome.detail : ""}`)
+}
 
 done++
 progress.style.width=(done/files.length*100)+"%"
-status.innerText=`Scanning ${done}/${files.length}`+(failed?` (${failed} skipped)`:"")
+status.innerText=`Scanning ${done}/${files.length}`
 
 if(done%5===0){
 await new Promise(r=>setTimeout(r,0))
@@ -155,7 +208,7 @@ worker(files.slice(chunkSize*2,chunkSize*3)),
 worker(files.slice(chunkSize*3))
 ])
 
-return results
+return{points:results,noGps,timedOut,unsupported,failed}
 
 }
 
@@ -163,8 +216,6 @@ async function readPhoto(file){
 
 try{
 
-// race the parse against a timeout so one malformed file
-// can never stall a whole worker (and therefore the whole batch)
 let data = await Promise.race([
 exifr.parse(file,{
 tiff:true,
@@ -183,19 +234,35 @@ setTimeout(()=>reject(new Error("timeout")),FILE_TIMEOUT_MS)
 )
 ])
 
-if(!data || data.latitude===undefined)return null
+if(!data){
+return{ok:false,reason:"unsupported",detail:"no EXIF block found"}
+}
+
+if(data.latitude===undefined){
+return{ok:false,reason:"noGps"}
+}
 
 return{
+ok:true,
+data:{
 lat:data.latitude,
 lng:data.longitude,
 date:data.DateTimeOriginal
 ? new Date(data.DateTimeOriginal)
 : new Date(file.lastModified)
 }
+}
 
 }catch(err){
-console.warn("Skipped",file.name,err && err.message)
-return null
+
+let msg = err && err.message ? err.message : String(err)
+
+if(msg==="timeout"){
+return{ok:false,reason:"timeout"}
+}
+
+return{ok:false,reason:"error",detail:msg}
+
 }
 
 }
