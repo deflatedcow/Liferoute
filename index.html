@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Liferoute</title>
@@ -18,6 +18,7 @@ html, body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    background: #fff;
 }
 
 #panel {
@@ -27,10 +28,10 @@ html, body {
     width: 100%;
     padding: 16px;
     z-index: 1001;
-    background: rgba(17, 17, 17, 0.95);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.98);
+    color: #111;
     border-radius: 0 0 22px 22px;
-    box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.1);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
@@ -44,7 +45,7 @@ html, body {
 #status {
     margin-top: 12px;
     font-size: 14px;
-    color: #ccc;
+    color: #666;
 }
 
 button {
@@ -68,7 +69,7 @@ button:active {
 }
 
 button.active {
-    background: #333;
+    background: #111;
     color: #FFD700;
 }
 
@@ -78,8 +79,8 @@ button.active {
     height: 35px;
     margin: 15px auto;
     border-radius: 50%;
-    border: 5px solid rgba(255, 255, 255, 0.3);
-    border-top: 5px solid #FFD700;
+    border: 5px solid #eee;
+    border-top: 5px solid #111;
     animation: spin 0.5s linear infinite;
 }
 
@@ -91,7 +92,7 @@ button.active {
 #progressOuter {
     display: none;
     height: 10px;
-    background: rgba(255, 255, 255, 0.2);
+    background: #eee;
     border-radius: 10px;
     overflow: hidden;
     margin-top: 10px;
@@ -111,15 +112,15 @@ button.active {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(17, 17, 17, 0.98);
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
     padding: 25px;
     width: 85%;
     max-width: 400px;
     border-radius: 20px;
     text-align: center;
-    color: #fff;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    color: #111;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
 
 #popupText {
@@ -155,7 +156,7 @@ html, body {
 
 .leaflet-control-attribution {
     background: transparent;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(0, 0, 0, 0.5);
     font-size: 11px;
 }
 
@@ -200,10 +201,8 @@ html, body {
 // ============================================
 const CONFIG = {
     MAX_FILES: 2000,
-    WORKER_COUNT: 8,  // Increased for mobile multi-core
-    BATCH_SIZE: 50,   // Process 50 files at a time
-    MAX_DISTANCE_KM: 100,
-    MAX_TIME_GAP_HOURS: 12
+    WORKER_COUNT: 8,
+    BATCH_SIZE: 50
 };
 
 // ============================================
@@ -226,7 +225,6 @@ let popupText;
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize map for mobile
     map = L.map('map', {
         zoomControl: false,
         doubleClickZoom: false,
@@ -239,10 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
         maxZoom: 19
     }).addTo(map);
 
-    // Add zoom controls in bottom-right for mobile
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Cache DOM elements
     statusEl = document.getElementById('status');
     folderInput = document.getElementById('folder');
     button = document.getElementById('button');
@@ -252,11 +248,9 @@ document.addEventListener('DOMContentLoaded', () => {
     popup = document.getElementById('popup');
     popupText = document.getElementById('popupText');
 
-    // Event listeners
     button.onclick = () => folderInput.click();
     folderInput.addEventListener('change', handleFiles);
 
-    // Prevent default touch behavior
     document.addEventListener('touchmove', (e) => {
         if (e.touches.length > 1) e.preventDefault();
     }, { passive: false });
@@ -280,7 +274,6 @@ async function handleFiles(e) {
     updateStatus(`Found ${files.length} images, scanning...`);
     updateUI('loading');
 
-    // Process with multiple workers
     routePoints = await processFilesInParallel(files);
 
     if (routePoints.length === 0) {
@@ -290,10 +283,8 @@ async function handleFiles(e) {
 
     updateUI('processing', 'Sorting and drawing...');
     
-    // Sort by date
     routePoints.sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    // Draw everything
     drawRoute();
     
     updateUI('complete', `${routePoints.length} locations found`);
@@ -307,7 +298,6 @@ async function processFilesInParallel(files) {
     const total = files.length;
     let processed = 0;
 
-    // Create worker pool
     const workerPromises = [];
     const chunkSize = Math.ceil(files.length / CONFIG.WORKER_COUNT);
 
@@ -341,7 +331,6 @@ async function processChunk(files, onProgress) {
             console.warn(`Error processing ${file.name}:`, e);
         }
         
-        // Yield to event loop periodically
         if (results.length % CONFIG.BATCH_SIZE === 0) {
             onProgress(CONFIG.BATCH_SIZE);
             await new Promise(r => setTimeout(r, 0));
@@ -353,17 +342,17 @@ async function processChunk(files, onProgress) {
 }
 
 // ============================================
-// GPS EXTRACTION
+// GPS EXTRACTION - This is the key fix
 // ============================================
 async function extractGPS(file) {
     try {
-        // Use gps:true option to automatically extract and convert GPS data
+        // Parse with gps:true to get latitude/longitude directly
         const data = await exifr.parse(file, {
             gps: true,
-            DateTimeOriginal: true,
-            pick: ['latitude', 'longitude', 'DateTimeOriginal']
+            DateTimeOriginal: true
         });
 
+        // Check if we got GPS data
         if (data && data.latitude !== undefined && data.longitude !== undefined) {
             return {
                 lat: parseFloat(data.latitude),
@@ -372,9 +361,49 @@ async function extractGPS(file) {
                 fileName: file.name
             };
         }
+        
+        // If gps:true didn't work, try manual extraction
+        const exif = await exifr.parse(file);
+        
+        // Check for GPSLatitude/GPSLongitude (DMS format)
+        if (exif && exif.GPSLatitude && exif.GPSLongitude) {
+            const lat = convertDMS(exif.GPSLatitude, exif.GPSLatitudeRef);
+            const lng = convertDMS(exif.GPSLongitude, exif.GPSLongitudeRef);
+            
+            if (lat !== null && lng !== null) {
+                return {
+                    lat: lat,
+                    lng: lng,
+                    date: exif.DateTimeOriginal || file.lastModified,
+                    fileName: file.name
+                };
+            }
+        }
+        
         return null;
     } catch (e) {
         console.warn(`GPS extraction failed for ${file.name}:`, e);
+        return null;
+    }
+}
+
+// Convert DMS to decimal degrees
+function convertDMS(dms, hemisphere) {
+    if (!dms || dms.length < 3) return null;
+    
+    try {
+        const deg = typeof dms[0] === 'object' ? dms[0].num / dms[0].den : parseFloat(dms[0]);
+        const min = typeof dms[1] === 'object' ? dms[1].num / dms[1].den : parseFloat(dms[1]);
+        const sec = typeof dms[2] === 'object' ? dms[2].num / dms[2].den : parseFloat(dms[2]);
+        
+        if (isNaN(deg) || isNaN(min) || isNaN(sec)) return null;
+        
+        let dd = deg + (min / 60) + (sec / 3600);
+        if (hemisphere === 'S' || hemisphere === 'W') dd = -dd;
+        
+        if (dd < -180 || dd > 180) return null;
+        return dd;
+    } catch (e) {
         return null;
     }
 }
@@ -383,7 +412,6 @@ async function extractGPS(file) {
 // DRAWING
 // ============================================
 function drawRoute() {
-    // Clear existing layers
     clearLayers();
 
     if (routePoints.length === 0) {
@@ -391,7 +419,6 @@ function drawRoute() {
         return;
     }
 
-    // Draw polyline connecting all points
     const coords = routePoints.map(p => [p.lat, p.lng]);
     
     L.polyline(coords, {
@@ -402,7 +429,6 @@ function drawRoute() {
         lineJoin: 'round'
     }).addTo(map);
 
-    // Draw markers for each point
     routePoints.forEach(point => {
         const marker = L.circleMarker([point.lat, point.lng], {
             radius: 6,
@@ -416,12 +442,10 @@ function drawRoute() {
         markers.push(marker);
         marker.addTo(map);
         
-        // Add popup with info
         const dateStr = new Date(point.date).toLocaleDateString();
         marker.bindPopup(`📍 ${dateStr}<br>${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`);
     });
 
-    // Fit map to all points
     map.fitBounds(coords, {
         padding: [60, 60],
         maxZoom: 16
@@ -429,7 +453,6 @@ function drawRoute() {
 }
 
 function clearLayers() {
-    // Remove all polylines and markers
     map.eachLayer(layer => {
         if (layer instanceof L.Polyline || layer instanceof L.CircleMarker) {
             map.removeLayer(layer);
@@ -489,9 +512,6 @@ function finishButton() {
     progress.style.width = '0%';
 }
 
-// ============================================
-// RESET
-// ============================================
 function resetMap() {
     clearLayers();
     routePoints = [];
