@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liferoute</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
-
-<style>
+<title>Liferoute</title><link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"><style>
 body{margin:0;font-family:system-ui}
 #panel{
 position:absolute;bottom:0;left:0;width:100%;padding:16px;
@@ -34,52 +29,26 @@ animation:spin .6s linear infinite
 #detailsToggle{
 display:none;margin-top:8px;background:#f0f0f0;border:1px solid #ddd;
 padding:12px;font-size:13px;font-weight:600;border-radius:12px;width:100%;
-transition:transform .12s ease, background .12s ease;
 }
-#detailsToggle:active{transform:scale(.96);background:#e5e5e5}
 #details{
 display:none;max-height:180px;overflow-y:auto;margin-top:8px;
 font-size:11px;font-family:monospace;background:#f5f5f5;
 border-radius:8px;padding:8px;white-space:pre-wrap
 }
 #map{height:100vh}
-.leaflet-control-zoom{margin-top:12px !important}
-</style>
-</head>
-
-<body>
-
-<div id="map"></div>
-
-<div id="panel">
-<h2>Liferoute</h2>
-
-<input id="folder" type="file" webkitdirectory multiple hidden>
-<button id="button">Choose Photo Folder</button>
-
-<div id="status">Waiting</div>
-<div id="loader"></div>
-
-<div id="progressOuter">
+</style></head><body><div id="map"></div><div id="panel">
+<h2>Liferoute</h2><input id="folder" type="file" webkitdirectory multiple hidden>
+<button id="button">Choose Photo Folder</button><div id="status">Waiting</div>
+<div id="loader"></div><div id="progressOuter">
 <div id="progress"></div>
-</div>
+</div><button id="detailsToggle">Show details</button>
 
-<button id="detailsToggle">Show details</button>
 <div id="details"></div>
-</div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
-
-<script>
+</div><script src="https://unpkg.com/leaflet/dist/leaflet.js"></script><script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script><script>
 
 const map = L.map("map",{zoomControl:false}).setView([20,0],2)
-
 L.control.zoom({position:"topright"}).addTo(map)
-
-L.tileLayer(
-"https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-).addTo(map)
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map)
 
 const folder = document.getElementById("folder")
 const button = document.getElementById("button")
@@ -95,7 +64,6 @@ let lines = []
 let skipLog = []
 
 button.onclick = ()=>folder.click()
-
 folder.addEventListener("change", handleFiles)
 
 detailsToggle.onclick = ()=>{
@@ -104,13 +72,20 @@ details.style.display = open ? "none" : "block"
 detailsToggle.innerText = open ? "Show details" : "Hide details"
 }
 
+function isValidCoord(lat,lng){
+return lat && lng && lat<=90 && lat>=-90 && lng<=180 && lng>=-180
+}
+
+function isJump(a,b){
+return Math.abs(a.lat-b.lat)>5 || Math.abs(a.lng-b.lng)>5
+}
+
 async function handleFiles(e){
 
 resetMap()
 skipLog=[]
 details.innerText=""
 detailsToggle.style.display="none"
-details.style.display="none"
 
 let files=[...e.target.files]
 .filter(f=>f.type.startsWith("image/"))
@@ -122,136 +97,58 @@ button.classList.add("active")
 button.innerText="Scanning"
 loader.style.display="block"
 progressOuter.style.display="block"
-status.innerText=`Scanning 0/${files.length}`
-
-try{
 
 let result = await extract(files)
 routePoints = result.points
 
-renderDetails(result)
-
 if(!routePoints.length){
-status.innerText="No GPS data found in any photo"
+status.innerText="No GPS data found"
+finish()
 return
 }
 
-status.innerText="Sorting"
 routePoints.sort((a,b)=>a.date-b.date)
 
 status.innerText="Drawing"
 await drawRoute()
 
-status.innerText=`${routePoints.length} of ${files.length} photos plotted`
-
-}catch(err){
-console.error("Liferoute failed:",err)
-status.innerText="Something went wrong: "+(err && err.message ? err.message : String(err))
-skipLog.push("FATAL ERROR: "+(err && err.stack ? err.stack : String(err)))
-renderDetails({noGps:0,unsupported:0,failed:0})
-}finally{
+status.innerText=`${routePoints.length} photos plotted`
 finish()
 }
 
-}
-
-function renderDetails(counts){
-let lines = []
-lines.push(`No GPS data: ${counts.noGps}`)
-lines.push(`Unsupported format: ${counts.unsupported}`)
-lines.push(`Read errors: ${counts.failed}`)
-lines.push("")
-lines.push(...skipLog.slice(0,200))
-if(skipLog.length>200){
-lines.push(`... and ${skipLog.length-200} more`)
-}
-details.innerText = lines.join("\n")
-detailsToggle.style.display = "block"
-}
-
-// Sequential processing. JS is single threaded, so the previous
-// "4 workers" split gave no real speed benefit and made files
-// race an arbitrary timeout against main thread contention, which
-// on mobile (screen lock, tab backgrounding) caused perfectly good
-// files to get skipped as false timeouts. Going sequential removes
-// that whole failure mode.
 async function extract(files){
 
 let results=[]
-let noGps=0
-let unsupported=0
-let failed=0
 
 for(let i=0;i<files.length;i++){
 
 let file = files[i]
-let outcome = await readPhoto(file)
 
-if(outcome.ok){
-results.push(outcome.data)
+try{
+let data = await exifr.parse(file)
+
+if(!data || !isValidCoord(data.latitude,data.longitude)){
+skipLog.push(file.name+" no gps")
 }else{
-if(outcome.reason==="noGps")noGps++
-else if(outcome.reason==="unsupported")unsupported++
-else failed++
-skipLog.push(`${file.name}: ${outcome.reason}${outcome.detail ? " - "+outcome.detail : ""}`)
+results.push({
+lat:data.latitude,
+lng:data.longitude,
+date:new Date(data.DateTimeOriginal || file.lastModified)
+})
+}
+}catch{
+skipLog.push(file.name+" error")
 }
 
 status.innerText=`Scanning ${i+1}/${files.length}`
 progress.style.width=((i+1)/files.length*100)+"%"
 
-if(i%5===0){
+if(i%10===0){
 await new Promise(r=>setTimeout(r,0))
 }
-
 }
 
-return{points:results,noGps,unsupported,failed}
-
-}
-
-async function readPhoto(file){
-
-try{
-
-let data = await exifr.parse(file,{
-tiff:true,
-ifd0:true,
-exif:true,
-gps:true,
-interop:false,
-thumbnail:false,
-xmp:false,
-icc:false,
-iptc:false,
-mergeOutput:true
-})
-
-if(!data){
-return{ok:false,reason:"unsupported",detail:"no EXIF block found"}
-}
-
-if(data.latitude===undefined){
-return{ok:false,reason:"noGps"}
-}
-
-return{
-ok:true,
-data:{
-lat:data.latitude,
-lng:data.longitude,
-date:data.DateTimeOriginal
-? new Date(data.DateTimeOriginal)
-: new Date(file.lastModified)
-}
-}
-
-}catch(err){
-
-let msg = err && err.message ? err.message : String(err)
-return{ok:false,reason:"error",detail:msg}
-
-}
-
+return{points:results}
 }
 
 async function drawRoute(){
@@ -259,9 +156,29 @@ async function drawRoute(){
 lines.forEach(l=>map.removeLayer(l))
 lines=[]
 
-let coords = routePoints.map(p=>[p.lat,p.lng])
+if(routePoints.length<2)return
 
-let line = L.polyline([],{
+let segments=[]
+let current=[routePoints[0]]
+
+for(let i=1;i<routePoints.length;i++){
+
+if(isJump(routePoints[i-1],routePoints[i])){
+segments.push(current)
+current=[routePoints[i]]
+}else{
+current.push(routePoints[i])
+}
+
+}
+
+segments.push(current)
+
+for(let seg of segments){
+
+let coords = seg.map(p=>[p.lat,p.lng])
+
+let line = L.polyline(coords,{
 color:"#FFD700",
 weight:4,
 opacity:.8
@@ -269,36 +186,10 @@ opacity:.8
 
 lines.push(line)
 
-let i=0
-let batch=25
-
-await new Promise((resolve)=>{
-
-function step(){
-
-let slice = coords.slice(i,i+batch)
-
-slice.forEach(c=>line.addLatLng(c))
-
-i+=batch
-
-if(i<coords.length){
-
-setTimeout(()=>requestAnimationFrame(step),0)
-
-}else{
-
-map.fitBounds(coords,{padding:[40,40]})
-resolve()
-
+await new Promise(r=>setTimeout(r,0))
 }
 
-}
-
-step()
-
-})
-
+map.fitBounds(routePoints.map(p=>[p.lat,p.lng]),{padding:[40,40]})
 }
 
 function resetMap(){
@@ -314,7 +205,5 @@ loader.style.display="none"
 progressOuter.style.display="none"
 }
 
-</script>
-
-</body>
+</script></body>
 </html>
